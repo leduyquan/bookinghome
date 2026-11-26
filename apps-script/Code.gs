@@ -5,17 +5,20 @@
  *
  * Bố cục một tab:
  * A–M  Chi tiết
- * N–R  Chi phí
- * T–X  Doanh thu (script ghi lại)
- * Z+   Lịch booking (script vẽ lại)
+ * N    trống
+ * O–S  Chi phí
+ * T    trống
+ * U–Z  Doanh thu (script ghi lại)
+ * AA   trống
+ * AB+  Lịch OCC (script vẽ lại)
  *
  * Script properties: APP_PASSWORD = quanduy123
  * Deploy: Web app, Execute as Me, Who has access: Anyone.
  */
 var DETAIL_COL = 1
-var EXPENSE_COL = 14
-var REVENUE_COL = 20
-var CALENDAR_COL = 26
+var EXPENSE_COL = 15
+var REVENUE_COL = 21
+var CALENDAR_COL = 28
 var ROOMS = {
   '201': { type: '2 BED', header: '#556B45', cell: '#D5DCC6', ink: '#2A3522' },
   '202': { type: '1 BED', header: '#A3542E', cell: '#F4D4C0', ink: '#633216' },
@@ -199,7 +202,7 @@ function ensureHeaders_(sheet) {
       .setFontWeight('bold')
       .setFontColor('#ffffff')
       .setBackground('#244D74')
-    sheet.getRange('Q:Q').setNumberFormat('@')
+    sheet.getRange(1, EXPENSE_COL + 3, sheet.getMaxRows(), 1).setNumberFormat('@')
   }
 }
 
@@ -307,16 +310,15 @@ function clearBody_(sheet, column, width) {
 
 function writeRevenue_(sheet, revenue) {
   sheet
-    .getRange(1, REVENUE_COL, 1, 5)
-    .setValues([['Doanh thu', 'Chi phí', 'Lợi nhuận', 'Quân Duy (50%)', 'Thùy (50%)']])
+    .getRange(1, REVENUE_COL, 1, 6)
+    .setValues([['Doanh thu', 'Doanh thu ước tính', 'Chi phí', 'Lợi nhuận', 'Quân Duy (50%)', 'Thùy (50%)']])
     .setFontWeight('bold')
     .setFontColor('#ffffff')
     .setBackground('#244D74')
   sheet
-    .getRange(2, REVENUE_COL, 1, 5)
-    .setValues([[revenue.doanhThu, revenue.chiPhi, revenue.loiNhuan, revenue.quanDuy, revenue.thuy]])
+    .getRange(2, REVENUE_COL, 1, 6)
+    .setValues([[revenue.doanhThu, revenue.doanhThuUocTinh, revenue.chiPhi, revenue.loiNhuan, revenue.quanDuy, revenue.thuy]])
     .setNumberFormat('#,##0')
-  sheet.getRange(3, REVENUE_COL).setValue('Doanh thu = tổng Giá thu. Chi phí = tổng chi phí vận hành.')
 }
 
 function redrawCalendar_(sheet, period, bookings) {
@@ -340,22 +342,36 @@ function redrawCalendar_(sheet, period, bookings) {
   var aligns = []
   var stays = []
   var roomBands = []
+  var titles = []
 
-  weeks.forEach(function (week) {
-    values.push(['', ''].concat(WEEKDAYS))
+  groupWeeks_(weeks).forEach(function (block) {
+    var firstDay = block[0][0].iso
+    var lastWeek = block[block.length - 1]
+    var lastDay = lastWeek[lastWeek.length - 1].iso
+    values.push(filled(shortDay_(firstDay) + ' – ' + shortDay_(lastDay)))
+    backgrounds.push(filled('#244D74'))
+    fontColors.push(filled('#ffffff'))
+    fontWeights.push(filled('bold'))
+    aligns.push(filled('center'))
+    titles.push(values.length)
+
+    values.push(['Room', 'Type'].concat(WEEKDAYS))
     backgrounds.push(filled('#244D74'))
     fontColors.push(filled('#ffffff'))
     fontWeights.push(filled('bold'))
     aligns.push(filled('center'))
 
-    var dates = ['Room', 'Type']
+    block.forEach(function (week) {
+    var dates = ['', '']
+    var dateBg = ['#F5F5F5', '#F5F5F5']
     var dateInk = ['#000000', '#000000']
     week.forEach(function (day) {
-      dates.push(day.iso.slice(8, 10) + '/' + day.iso.slice(5, 7))
+      dates.push(shortDay_(day.iso))
+      dateBg.push('#E9EDF1')
       dateInk.push(day.inPeriod ? '#000000' : '#a8a29e')
     })
     values.push(dates)
-    backgrounds.push(filled('#E9EDF1'))
+    backgrounds.push(dateBg)
     fontColors.push(dateInk)
     fontWeights.push(filled('normal'))
     aligns.push(filled('center'))
@@ -404,6 +420,7 @@ function redrawCalendar_(sheet, period, bookings) {
       aligns.push(rowAlign)
     })
     roomBands.push(bandStart)
+    })
 
     values.push(filled(''))
     backgrounds.push(filled('#ffffff'))
@@ -421,6 +438,9 @@ function redrawCalendar_(sheet, period, bookings) {
     body.setHorizontalAlignments(aligns)
   }
 
+  titles.forEach(function (row) {
+    sheet.getRange(row, CALENDAR_COL, 1, width).merge().setHorizontalAlignment('center').setVerticalAlignment('middle')
+  })
   stays.forEach(function (stay) {
     var target = sheet.getRange(stay.row, stay.column, 1, stay.span)
     if (stay.span > 1) target.merge()
@@ -494,16 +514,41 @@ function findOverlap_(bookings, room, checkIn, checkOut, excludeId) {
 
 function computeRevenue_(bookings, expenses) {
   var doanhThu = 0
+  var doanhThuUocTinh = 0
   var chiPhi = 0
   bookings.forEach(function (booking) {
-    doanhThu += Number(booking.net) || 0
+    var net = Number(booking.net) || 0
+    doanhThuUocTinh += net
+    if (booking.paid) doanhThu += net
   })
   expenses.forEach(function (expense) {
     chiPhi += Number(expense.amount) || 0
   })
   var loiNhuan = doanhThu - chiPhi
   var quanDuy = Math.round(loiNhuan / 2)
-  return { doanhThu: doanhThu, chiPhi: chiPhi, loiNhuan: loiNhuan, quanDuy: quanDuy, thuy: loiNhuan - quanDuy }
+  return {
+    doanhThu: doanhThu,
+    doanhThuUocTinh: doanhThuUocTinh,
+    chiPhi: chiPhi,
+    loiNhuan: loiNhuan,
+    quanDuy: quanDuy,
+    thuy: loiNhuan - quanDuy,
+  }
+}
+
+function groupWeeks_(weeks) {
+  var size = 4
+  var groups = []
+  for (var index = 0; index < weeks.length; index += size) groups.push(weeks.slice(index, index + size))
+  if (groups.length > 1 && groups[groups.length - 1].length === 1) {
+    var tail = groups.pop()
+    groups[groups.length - 1] = groups[groups.length - 1].concat(tail)
+  }
+  return groups
+}
+
+function shortDay_(iso) {
+  return iso.slice(8, 10) + '/' + iso.slice(5, 7)
 }
 
 function weeksCovering_(start, end) {

@@ -51,6 +51,7 @@ export type ExpenseInput = {
 
 export type Revenue = {
   doanhThu: number
+  doanhThuUocTinh: number
   chiPhi: number
   loiNhuan: number
   quanDuy: number

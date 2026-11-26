@@ -15,6 +15,10 @@ export function RevenueView({ revenue }: { revenue: Revenue }) {
         header: 'Doanh thu',
         cell: (info) => <MoneyCell amount={info.getValue()} />,
       }),
+      columnHelper.accessor('doanhThuUocTinh', {
+        header: 'Doanh thu ước tính',
+        cell: (info) => <MoneyCell amount={info.getValue()} />,
+      }),
       columnHelper.accessor('chiPhi', {
         header: 'Chi phí',
         cell: (info) => <MoneyCell amount={info.getValue()} />,
@@ -48,13 +52,13 @@ export function RevenueView({ revenue }: { revenue: Revenue }) {
       <LedgerTable
         table={table}
         empty="Chưa có doanh thu trong kỳ này."
-        minWidth="min-w-[720px]"
-        alignRight={['doanhThu', 'chiPhi', 'loiNhuan', 'quanDuy', 'thuy']}
+        minWidth="min-w-[880px]"
+        alignRight={['doanhThu', 'doanhThuUocTinh', 'chiPhi', 'loiNhuan', 'quanDuy', 'thuy']}
       />
     </div>
   )
 }
 
 function MoneyCell({ amount }: { amount: number }) {
-  return <span className={amount < 0 ? 'font-semibold text-red-700' : 'font-semibold'}>{formatVnd(amount)}</span>
+  return <span className={amount < 0 ? 'font-semibold text-red-700' : 'font-semibold'}>{formatVnd(amount || 0)}</span>
 }

@@ -165,12 +165,23 @@ describe('revenue and money', () => {
     expect(formatVnd(-101)).toBe('-101 đ')
     expect(
       computeRevenue(
-        [{ net: 1_000 }, { net: 500 }],
+        [
+          { net: 1_000, paid: true },
+          { net: 500, paid: false },
+        ],
         [{ amount: 400 }],
       ),
-    ).toEqual({ doanhThu: 1_500, chiPhi: 400, loiNhuan: 1_100, quanDuy: 550, thuy: 550 })
-    expect(computeRevenue([{ net: 101 }], [])).toEqual({
+    ).toEqual({
+      doanhThu: 1_000,
+      doanhThuUocTinh: 1_500,
+      chiPhi: 400,
+      loiNhuan: 600,
+      quanDuy: 300,
+      thuy: 300,
+    })
+    expect(computeRevenue([{ net: 101, paid: true }], [])).toEqual({
       doanhThu: 101,
+      doanhThuUocTinh: 101,
       chiPhi: 0,
       loiNhuan: 101,
       quanDuy: 51,
