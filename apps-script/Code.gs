@@ -63,7 +63,7 @@ function handle_(body) {
 
   if (body.action === 'login') return { ok: true }
   if (body.action === 'listPeriods') return { ok: true, periods: listPeriods_() }
-  if (body.action === 'getPeriod') return okData_(readPeriod_(body.sheetName, true))
+  if (body.action === 'getPeriod') return okData_(readPeriod_(body.sheetName, false))
   if (body.action === 'saveBooking') return okData_(saveBooking_(body.sheetName, body.booking || {}))
   if (body.action === 'deleteBooking') return okData_(deleteBooking_(body.sheetName, body.id))
   if (body.action === 'saveExpense') return okData_(saveExpense_(body.sheetName, body.expense || {}))
@@ -196,6 +196,7 @@ function ensureHeaders_(sheet) {
       .setFontColor('#ffffff')
       .setBackground('#244D74')
     sheet.setFrozenRows(1)
+    sheet.getRange('D:E').setNumberFormat('@')
   }
   if (!sheet.getRange(1, EXPENSE_COL).getValue()) {
     sheet
@@ -204,9 +205,8 @@ function ensureHeaders_(sheet) {
       .setFontWeight('bold')
       .setFontColor('#ffffff')
       .setBackground('#244D74')
+    sheet.getRange('Q:Q').setNumberFormat('@')
   }
-  sheet.getRange('D:E').setNumberFormat('@')
-  sheet.getRange('Q:Q').setNumberFormat('@')
 }
 
 function readBookings_(sheet) {
@@ -304,66 +304,120 @@ function writeRevenue_(sheet, revenue) {
 }
 
 function redrawCalendar_(sheet, period, bookings) {
-  var range = sheet.getRange(1, CALENDAR_COL, 800, 9)
-  range.breakApart()
-  range.clear()
-  var row = 1
-  weeksCovering_(period.start, period.end).forEach(function (week) {
-    sheet
-      .getRange(row, CALENDAR_COL, 1, 9)
-      .setValues([['', ''].concat(WEEKDAYS)])
-      .setBackground('#244D74')
-      .setFontColor('#ffffff')
-      .setFontWeight('bold')
-      .setHorizontalAlignment('center')
-    row += 1
+  var weeks = weeksCovering_(period.start, period.end)
+  var width = 9
+  var usedRows = Math.max(weeks.length * 6, 1)
+  var area = sheet.getRange(1, CALENDAR_COL, usedRows + 12, width)
+  area.breakApart()
+  area.clear()
+
+  function filled(value) {
+    var row = []
+    for (var index = 0; index < width; index += 1) row.push(value)
+    return row
+  }
+
+  var values = []
+  var backgrounds = []
+  var fontColors = []
+  var fontWeights = []
+  var aligns = []
+  var stays = []
+  var roomBands = []
+
+  weeks.forEach(function (week) {
+    values.push(['', ''].concat(WEEKDAYS))
+    backgrounds.push(filled('#244D74'))
+    fontColors.push(filled('#ffffff'))
+    fontWeights.push(filled('bold'))
+    aligns.push(filled('center'))
+
     var dates = ['Room', 'Type']
+    var dateInk = ['#000000', '#000000']
     week.forEach(function (day) {
       dates.push(day.iso.slice(8, 10) + '/' + day.iso.slice(5, 7))
+      dateInk.push(day.inPeriod ? '#000000' : '#a8a29e')
     })
-    var dateRange = sheet.getRange(row, CALENDAR_COL, 1, 9)
-    dateRange.setValues([dates]).setBackground('#E9EDF1').setHorizontalAlignment('center')
-    week.forEach(function (day, index) {
-      if (!day.inPeriod) sheet.getRange(row, CALENDAR_COL + 2 + index).setFontColor('#a8a29e')
-    })
-    row += 1
+    values.push(dates)
+    backgrounds.push(filled('#E9EDF1'))
+    fontColors.push(dateInk)
+    fontWeights.push(filled('normal'))
+    aligns.push(filled('center'))
+
+    var bandStart = values.length + 1
     ;['201', '202', '301'].forEach(function (roomId) {
-      writeRoomRow_(sheet, row, week, roomId, bookings)
-      row += 1
+      var meta = ROOMS[roomId]
+      var rowValues = filled('')
+      var rowBg = filled('#ffffff')
+      var rowInk = filled('#000000')
+      var rowWeight = filled('normal')
+      var rowAlign = filled('left')
+      rowValues[0] = roomId
+      rowValues[1] = meta.type
+      rowBg[0] = meta.header
+      rowBg[1] = meta.header
+      rowInk[0] = '#ffffff'
+      rowInk[1] = '#ffffff'
+      rowWeight[0] = 'bold'
+      rowAlign[0] = 'center'
+      rowAlign[1] = 'center'
+
+      var column = 2
+      cellsForRoom_(week, bookings, roomId).forEach(function (cell) {
+        var span = cell.span || 1
+        if (cell.kind === 'outside') {
+          for (var offset = 0; offset < span; offset += 1) rowBg[column + offset] = '#F5F5F5'
+        } else if (cell.kind === 'stay') {
+          var text = cell.booking.guestName
+          if (cell.booking.note) text += '\n' + cell.booking.note
+          rowValues[column] = safeText_(text)
+          rowAlign[column] = 'center'
+          for (var stayOffset = 0; stayOffset < span; stayOffset += 1) {
+            rowBg[column + stayOffset] = meta.cell
+            rowInk[column + stayOffset] = meta.ink
+          }
+          stays.push({ row: values.length + 1, column: CALENDAR_COL + column, span: span })
+        }
+        column += span
+      })
+
+      values.push(rowValues)
+      backgrounds.push(rowBg)
+      fontColors.push(rowInk)
+      fontWeights.push(rowWeight)
+      aligns.push(rowAlign)
     })
-    row += 1
+    roomBands.push(bandStart)
+
+    values.push(filled(''))
+    backgrounds.push(filled('#ffffff'))
+    fontColors.push(filled('#000000'))
+    fontWeights.push(filled('normal'))
+    aligns.push(filled('left'))
   })
+
+  if (values.length) {
+    var body = sheet.getRange(1, CALENDAR_COL, values.length, width)
+    body.setValues(values)
+    body.setBackgrounds(backgrounds)
+    body.setFontColors(fontColors)
+    body.setFontWeights(fontWeights)
+    body.setHorizontalAlignments(aligns)
+  }
+
+  stays.forEach(function (stay) {
+    var target = sheet.getRange(stay.row, stay.column, 1, stay.span)
+    if (stay.span > 1) target.merge()
+    target.setWrap(true).setHorizontalAlignment('center').setVerticalAlignment('middle')
+  })
+  roomBands.forEach(function (row) {
+    sheet.getRange(row, CALENDAR_COL + 2, 3, 7).setBorder(true, true, true, true, true, true, '#d6d3d1', SpreadsheetApp.BorderStyle.SOLID)
+    sheet.setRowHeights(row, 3, 28)
+  })
+
   sheet.setColumnWidth(CALENDAR_COL, 70)
   sheet.setColumnWidth(CALENDAR_COL + 1, 80)
-  for (var index = 2; index < 9; index += 1) sheet.setColumnWidth(CALENDAR_COL + index, 120)
-}
-
-function writeRoomRow_(sheet, row, week, roomId, bookings) {
-  var meta = ROOMS[roomId]
-  sheet.getRange(row, CALENDAR_COL).setValue(roomId).setBackground(meta.header).setFontColor('#ffffff').setFontWeight('bold').setHorizontalAlignment('center')
-  sheet.getRange(row, CALENDAR_COL + 1).setValue(meta.type).setBackground(meta.header).setFontColor('#ffffff').setHorizontalAlignment('center')
-  sheet.setRowHeight(row, 28)
-  var column = CALENDAR_COL + 2
-  cellsForRoom_(week, bookings, roomId).forEach(function (cell) {
-    var span = cell.span || 1
-    var target = sheet.getRange(row, column, 1, span)
-    if (span > 1) target.merge()
-    if (cell.kind === 'outside') target.setBackground('#F5F5F5')
-    else if (cell.kind === 'empty') target.setBackground('#ffffff')
-    else {
-      var text = cell.booking.guestName
-      if (cell.booking.note) text += '\n' + cell.booking.note
-      target
-        .setValue(safeText_(text))
-        .setBackground(meta.cell)
-        .setFontColor(meta.ink)
-        .setWrap(true)
-        .setHorizontalAlignment('center')
-        .setVerticalAlignment('middle')
-    }
-    target.setBorder(true, true, true, true, true, true, '#d6d3d1', SpreadsheetApp.BorderStyle.SOLID)
-    column += span
-  })
+  for (var index = 2; index < width; index += 1) sheet.setColumnWidth(CALENDAR_COL + index, 120)
 }
 
 function normalizeBooking_(input, period, existing, id) {
