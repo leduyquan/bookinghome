@@ -61,6 +61,7 @@ function Workspace() {
 
   const periods = periodsQuery.data ?? []
   const active = periods.find((period) => period.sheetName === activeName) ?? null
+  const pageLoading = periodsQuery.isLoading || Boolean(active && periodQuery.isLoading)
 
   function selectPeriod(sheetName: string) {
     setActiveName(sheetName)
@@ -82,12 +83,14 @@ function Workspace() {
       <PeriodTabs periods={periods} active={activeName} onSelect={selectPeriod} />
       <div className="flex min-h-0 flex-1">
         <Sidebar section={section} onSelect={selectSection} onLock={lock} />
-        <main className="min-w-0 flex-1 overflow-auto p-5">
-          <header className="mb-4">
-            <h2 className="text-xl font-semibold">{titles[section]}</h2>
-            {active ? <p className="text-sm text-neutral-700">Kỳ {active.label}</p> : null}
-          </header>
-          {periodsQuery.isLoading ? <Loading /> : null}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-5">
+          {pageLoading ? null : (
+            <header className="mb-4">
+              <h2 className="text-xl font-semibold">{titles[section]}</h2>
+              {active ? <p className="text-sm text-neutral-700">Kỳ {active.label}</p> : null}
+            </header>
+          )}
+          {pageLoading ? <Loading /> : null}
           {periodsQuery.error && !(periodsQuery.error instanceof UnauthorizedError) ? (
             <p className="text-sm text-red-700">{errorMessage(periodsQuery.error)}</p>
           ) : null}
@@ -96,7 +99,6 @@ function Workspace() {
               Chưa có sheet đúng tên kỳ. Tạo tab tên <span className="font-semibold">11.11.2026-10.01.2027</span>.
             </p>
           ) : null}
-          {active && periodQuery.isLoading ? <Loading /> : null}
           {active && periodQuery.error && !(periodQuery.error instanceof UnauthorizedError) ? (
             <p className="text-sm text-red-700">{errorMessage(periodQuery.error)}</p>
           ) : null}

@@ -66,7 +66,7 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
                         {week.map((day) => (
                           <th
                             key={day.iso}
-                            className={`border border-neutral-200 font-medium ${day.inPeriod ? 'text-primary' : 'text-neutral-600'}`}
+                            className={`border border-neutral-200 font-semibold ${day.inPeriod ? 'text-primary' : 'text-neutral-600'}`}
                           >
                             {formatShort(day.iso)}
                           </th>
