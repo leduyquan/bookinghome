@@ -35,14 +35,14 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
           </span>
         ))}
       </div>
-      <div className="flex min-w-0 flex-col gap-4 overflow-x-auto pb-2">
+      <div className="flex min-w-0 flex-col gap-6 overflow-x-auto pb-2">
         {blocks.map((block) => {
           const first = block[0]?.[0]?.iso
           const lastWeek = block.at(-1)
           const last = lastWeek?.at(-1)?.iso
           return (
             <section key={first} className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
-              <div className="bg-primary-400 px-3 py-1.5 text-xs font-semibold text-white">
+              <div className="bg-primary-400 px-3 py-1.5 text-sm font-semibold text-white text-center">
                 {first && last ? `${formatShort(first)} – ${formatShort(last)}` : ''}
               </div>
               <table className="w-full min-w-[820px] border-collapse text-xs">
@@ -60,13 +60,13 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
                 <tbody>
                   {block.map((week) => (
                     <Fragment key={week[0]?.iso}>
-                      <tr className="bg-primary-50 text-center text-primary">
+                      <tr className="bg-primary-500 text-center text-white">
                         <th className="h-6 border border-neutral-200 bg-neutral-100" />
                         <th className="border border-neutral-200 bg-neutral-100" />
                         {week.map((day) => (
                           <th
                             key={day.iso}
-                            className={`border border-neutral-200 font-semibold ${day.inPeriod ? 'text-primary' : 'text-neutral-600'}`}
+                            className={`border border-neutral-200 font-semibold ${day.inPeriod ? 'text-neutral-50' : 'text-neutral-800'}`}
                           >
                             {formatShort(day.iso)}
                           </th>

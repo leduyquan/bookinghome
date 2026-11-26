@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { ConfirmModal } from '@/components/common/confirm-modal'
 import { LedgerTable } from '@/components/common/ledger-table'
 import { ExpenseDialog } from '@/components/expenses/expense-dialog'
+import { useSectionAction } from '@/components/layout/section-action'
 import { Button } from '@/components/ui/button'
 import { formatDay } from '@/domain/dates'
 import { sortExpenses } from '@/domain/expense'
@@ -66,12 +67,18 @@ export function ExpensesView({ period, data }: { period: Period; data: PeriodDat
     [],
   )
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
+  const createButton = useMemo(
+    () => (
+      <Button className="min-w-[7.5rem] shrink-0" onClick={() => setCreating(true)}>
+        Tạo chi phí
+      </Button>
+    ),
+    [],
+  )
+  useSectionAction(createButton)
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button className="min-w-[7.5rem]" onClick={() => setCreating(true)}>Tạo chi phí</Button>
-      </div>
       <LedgerTable
         table={table}
         empty="Chưa có chi phí trong kỳ này."

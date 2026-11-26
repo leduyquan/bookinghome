@@ -27,6 +27,7 @@ const schema = z
     room: z.string(),
     total: z.number({ invalid_type_error: 'Nhập tổng giá' }).int().positive('Tổng giá phải lớn hơn 0'),
     cost: z.number({ invalid_type_error: 'Nhập chi phí' }).int().min(0, 'Chi phí phải là số nguyên không âm'),
+    paid: z.boolean(),
     note: z.string(),
   })
   .superRefine((value, ctx) => {
@@ -47,6 +48,7 @@ type FormValues = {
   room: string
   total: number | null
   cost: number | null
+  paid: boolean
   note: string
 }
 
@@ -58,6 +60,7 @@ const emptyValues: FormValues = {
   room: '',
   total: null,
   cost: 0,
+  paid: false,
   note: '',
 }
 
@@ -104,6 +107,7 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
             room: initial.room,
             total: initial.total,
             cost: initial.cost,
+            paid: initial.paid,
             note: initial.note,
           }
         : { ...emptyValues, room: seed?.room ?? '', checkIn: seed?.checkIn ?? '' },
@@ -130,6 +134,7 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
             room: values.room,
             total: values.total,
             cost: values.cost,
+            paid: values.paid,
             note: values.note,
           }
           const clash = findOverlap(bookings, input.room, input.checkIn, input.checkOut, initial?.id)
@@ -238,6 +243,32 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
           />
           <FormInput id="booking-net" label="Giá thu" value={typeof total === 'number' ? formatVnd(net) : ''} disabled />
         </div>
+        <Controller
+          control={control}
+          name="paid"
+          render={({ field }) => (
+            <div className="flex items-center gap-3">
+              <span id="booking-paid-label" className="text-sm leading-5 font-semibold whitespace-nowrap text-neutral-900">
+                Thanh toán?
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={field.value}
+                aria-labelledby="booking-paid-label"
+                onClick={() => field.onChange(!field.value)}
+                className={`relative inline-flex h-6 w-[3.8rem] shrink-0 items-center rounded-full text-xs font-semibold text-white ${field.value ? 'bg-green-700' : 'bg-orange-500'}`}
+              >
+                <span
+                  className={`pointer-events-none absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow-sm transition-transform ${field.value ? 'translate-x-9' : 'translate-x-0'}`}
+                />
+                <span className={`pointer-events-none w-full ${field.value ? 'pl-2 text-left' : 'pr-2 text-right'}`}>
+                  {field.value ? 'Yes' : 'No'}
+                </span>
+              </button>
+            </div>
+          )}
+        />
         <FormTextarea id="booking-note" label="Ghi chú" {...register('note')} />
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>

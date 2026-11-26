@@ -56,6 +56,7 @@ export function normalizeBooking(input: BookingInput, period: Period, existing: 
     total,
     cost,
     net: total - cost,
+    paid: input.paid === true,
     note: input.note.trim(),
   }
 }

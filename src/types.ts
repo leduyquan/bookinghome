@@ -16,6 +16,7 @@ export type Booking = {
   total: number
   cost: number
   net: number
+  paid: boolean
   note: string
 }
 
@@ -28,6 +29,7 @@ export type BookingInput = {
   room: RoomId
   total: number
   cost: number
+  paid?: boolean
   note: string
 }
 

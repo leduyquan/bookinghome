@@ -9,10 +9,14 @@ type LedgerTableProps<T> = {
   footer?: ReactNode
   minWidth?: string
   alignRight?: string[]
+  alignCenter?: string[]
+  truncate?: string[]
 }
 
-export function LedgerTable<T>({ table, empty, footer, minWidth = 'min-w-[640px]', alignRight = [] }: LedgerTableProps<T>) {
+export function LedgerTable<T>({ table, empty, footer, minWidth = 'min-w-[640px]', alignRight = [], alignCenter = [], truncate = [] }: LedgerTableProps<T>) {
   const right = new Set(alignRight)
+  const center = new Set(alignCenter)
+  const clipped = new Set(truncate)
   const rows = table.getRowModel().rows
   const columnCount = table.getVisibleLeafColumns().length
 
@@ -28,6 +32,7 @@ export function LedgerTable<T>({ table, empty, footer, minWidth = 'min-w-[640px]
                   className={cn(
                     'px-3 py-2.5 text-xs font-semibold tracking-wide whitespace-nowrap',
                     right.has(header.column.id) && 'text-right',
+                    center.has(header.column.id) && 'text-center',
                   )}
                 >
                   {flexRender(header.column.columnDef.header, header.getContext())}
@@ -46,14 +51,22 @@ export function LedgerTable<T>({ table, empty, footer, minWidth = 'min-w-[640px]
           ) : (
             rows.map((row) => (
               <tr key={row.id} className="border-b border-neutral-100 odd:bg-white even:bg-neutral-50 hover:bg-neutral-100">
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className={cn('px-3 py-2 whitespace-nowrap text-black', right.has(cell.column.id) && 'text-right')}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const clip = clipped.has(cell.column.id)
+                  return (
+                    <td
+                      key={cell.id}
+                      className={cn(
+                        'px-3 py-2 text-black',
+                        clip ? 'max-w-30 truncate' : 'whitespace-nowrap',
+                        right.has(cell.column.id) && 'text-right',
+                        center.has(cell.column.id) && 'text-center',
+                      )}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  )
+                })}
               </tr>
             ))
           )}

@@ -19,6 +19,7 @@ function booking(partial: Partial<Booking> & Pick<Booking, 'id' | 'room' | 'chec
     total: 1,
     cost: 0,
     net: 1,
+    paid: false,
     note: '',
     ...partial,
   }
@@ -107,6 +108,21 @@ describe('booking math', () => {
       note: '',
     }
     expect(() => normalizeBooking(input, period, [], 'x')).toThrow(/trong kỳ/)
+  })
+
+  it('treats a missing payment flag as unpaid', () => {
+    const input: BookingInput = {
+      source: 'Khách lẻ',
+      guestName: 'Tiểu Quy',
+      checkIn: '2026-11-20',
+      checkOut: '2026-11-21',
+      room: '201',
+      total: 550_000,
+      cost: 0,
+      note: 'Đã thu khách',
+    }
+    expect(normalizeBooking(input, period, [], 'tq').paid).toBe(false)
+    expect(normalizeBooking({ ...input, paid: true }, period, [], 'tq').paid).toBe(true)
   })
 })
 

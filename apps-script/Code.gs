@@ -4,7 +4,7 @@
  * nên đặt tên 11.11.2026-10.01.2027 (web vẫn hiện 11/11/2026 - 10/01/2027).
  *
  * Bố cục một tab:
- * A–L  Chi tiết
+ * A–M  Chi tiết
  * N–R  Chi phí
  * T–X  Doanh thu (script ghi lại)
  * Z+   Lịch booking (script vẽ lại)
@@ -189,13 +189,7 @@ function openPeriod_(sheetName) {
 
 function ensureHeaders_(sheet) {
   if (!sheet.getRange(1, DETAIL_COL).getValue()) {
-    sheet
-      .getRange(1, DETAIL_COL, 1, 12)
-      .setValues([['id', 'Nguồn', 'Tên khách', 'Check-in', 'Check-out', 'Phòng', 'Số đêm', 'Giá bán', 'Tổng cộng', 'Chi phí', 'Giá thu', 'Ghi chú']])
-      .setFontWeight('bold')
-      .setFontColor('#ffffff')
-      .setBackground('#244D74')
-    sheet.setFrozenRows(1)
+    writeDetailHeader_(sheet)
     sheet.getRange('D:E').setNumberFormat('@')
   }
   if (!sheet.getRange(1, EXPENSE_COL).getValue()) {
@@ -209,8 +203,17 @@ function ensureHeaders_(sheet) {
   }
 }
 
+function detailIsLegacy_(sheet) {
+  return String(sheet.getRange(1, DETAIL_COL + 11).getValue()) === 'Ghi chú'
+}
+
+function isPaidLabel_(value) {
+  return value === true || value === 'Yes' || value === 'Đã thanh toán'
+}
+
 function readBookings_(sheet) {
-  return readRows_(sheet, DETAIL_COL, 12).map(function (row) {
+  var legacy = detailIsLegacy_(sheet)
+  return readRows_(sheet, DETAIL_COL, legacy ? 12 : 13).map(function (row) {
     return {
       id: String(row[0]),
       source: String(row[1] || ''),
@@ -223,7 +226,8 @@ function readBookings_(sheet) {
       total: Number(row[8]) || 0,
       cost: Number(row[9]) || 0,
       net: Number(row[10]) || 0,
-      note: String(row[11] || ''),
+      paid: legacy ? false : isPaidLabel_(row[11]),
+      note: String((legacy ? row[11] : row[12]) || ''),
     }
   })
 }
@@ -251,10 +255,21 @@ function readRows_(sheet, column, width) {
     })
 }
 
+function writeDetailHeader_(sheet) {
+  sheet
+    .getRange(1, DETAIL_COL, 1, 13)
+    .setValues([['id', 'Nguồn', 'Tên khách', 'Check-in', 'Check-out', 'Phòng', 'Số đêm', 'Giá bán', 'Tổng cộng', 'Chi phí', 'Giá thu', 'Thanh toán', 'Ghi chú']])
+    .setFontWeight('bold')
+    .setFontColor('#ffffff')
+    .setBackground('#244D74')
+  sheet.setFrozenRows(1)
+}
+
 function writeBookings_(sheet, bookings) {
-  clearBody_(sheet, DETAIL_COL, 12)
+  writeDetailHeader_(sheet)
+  clearBody_(sheet, DETAIL_COL, 13)
   if (!bookings.length) return
-  sheet.getRange(2, DETAIL_COL, bookings.length, 12).setValues(
+  sheet.getRange(2, DETAIL_COL, bookings.length, 13).setValues(
     bookings.map(function (booking) {
       return [
         booking.id,
@@ -268,6 +283,7 @@ function writeBookings_(sheet, bookings) {
         booking.total,
         booking.cost,
         booking.net,
+        booking.paid ? 'Yes' : 'No',
         safeText_(booking.note),
       ]
     }),
@@ -449,6 +465,7 @@ function normalizeBooking_(input, period, existing, id) {
     total: total,
     cost: cost,
     net: total - cost,
+    paid: isPaidLabel_(input.paid),
     note: String(input.note || '').trim(),
   }
 }

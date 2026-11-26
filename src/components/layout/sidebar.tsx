@@ -1,6 +1,8 @@
-import { CalendarRange, Lock, ReceiptText, Table2, Wallet } from 'lucide-react'
+import { CalendarRange, Lock, PanelLeftClose, PanelLeftOpen, ReceiptText, Table2, Wallet } from 'lucide-react'
+import { useState } from 'react'
 
 import { SECTIONS } from '@/constants'
+import { SIDEBAR_KEY } from '@/lib/session'
 import type { SectionId } from '@/types'
 
 const icons = {
@@ -19,13 +21,36 @@ export function Sidebar({
   onSelect: (section: SectionId) => void
   onLock: () => void
 }) {
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1')
+
+  function toggle() {
+    setCollapsed((current) => {
+      const next = !current
+      localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0')
+      return next
+    })
+  }
+
   return (
-    <aside className="flex w-52 shrink-0 flex-col border-r border-neutral-100 bg-neutral-50 text-black">
-      <div className="border-b border-neutral-100 px-4 py-4">
-        <p className="text-xs tracking-wide text-primary uppercase">Sổ nhà</p>
-        <h1 className="text-md font-semibold text-neutral-800">4B Mạc Thiên Tích</h1>
+    <aside className={`flex shrink-0 flex-col border-r border-neutral-100 bg-neutral-50 text-black ${collapsed ? 'w-16' : 'w-52'}`}>
+      <div className={`flex border-b border-neutral-100 ${collapsed ? 'justify-center px-2 py-3' : 'items-start justify-between gap-2 px-4 py-4'}`}>
+        {collapsed ? null : (
+          <div>
+            <p className="text-xs tracking-wide text-primary uppercase">Sổ nhà</p>
+            <h1 className="text-sm font-semibold text-neutral-800">4B Mạc Thiên Tích</h1>
+          </div>
+        )}
+        <button
+          type="button"
+          aria-label={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+          title={collapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+          className="rounded-md p-2 text-neutral-800 hover:bg-white"
+          onClick={toggle}
+        >
+          {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+        </button>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav className={`flex flex-1 flex-col gap-1 ${collapsed ? 'p-2' : 'p-3'}`}>
         {SECTIONS.map((item) => {
           const Icon = icons[item.id]
           const selected = section === item.id
@@ -34,18 +59,26 @@ export function Sidebar({
               key={item.id}
               type="button"
               aria-current={selected ? 'page' : undefined}
-              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm font-semibold ${selected ? 'bg-primary-50 text-primary' : 'text-neutral-800 hover:bg-white'}`}
+              aria-label={collapsed ? item.label : undefined}
+              title={collapsed ? item.label : undefined}
+              className={`flex items-center rounded-md py-2.5 text-sm font-semibold ${collapsed ? 'justify-center px-2' : 'gap-3 px-3 text-left'} ${selected ? 'bg-primary-50 text-primary' : 'text-neutral-800 hover:bg-white'}`}
               onClick={() => onSelect(item.id)}
             >
-              <Icon className="size-4" />
-              {item.label}
+              <Icon className="size-4 shrink-0" />
+              {collapsed ? null : item.label}
             </button>
           )
         })}
       </nav>
-      <button type="button" className="m-3 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-neutral-800 hover:bg-white" onClick={onLock}>
-        <Lock className="size-4" />
-        Khóa
+      <button
+        type="button"
+        aria-label={collapsed ? 'Khóa' : undefined}
+        title={collapsed ? 'Khóa' : undefined}
+        className={`m-2 flex items-center rounded-md py-2 text-sm text-neutral-800 hover:bg-white ${collapsed ? 'justify-center px-2' : 'mx-3 gap-2 px-3'}`}
+        onClick={onLock}
+      >
+        <Lock className="size-4 shrink-0" />
+        {collapsed ? null : 'Khóa'}
       </button>
     </aside>
   )

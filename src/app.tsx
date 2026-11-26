@@ -7,6 +7,7 @@ import { Loading } from '@/components/common/loading'
 import { DetailsView } from '@/components/details/details-view'
 import { ExpensesView } from '@/components/expenses/expenses-view'
 import { PeriodTabs } from '@/components/layout/period-tabs'
+import { SectionActionProvider } from '@/components/layout/section-action'
 import { Sidebar } from '@/components/layout/sidebar'
 import { RevenueView } from '@/components/revenue/revenue-view'
 import { todayIso } from '@/domain/dates'
@@ -74,42 +75,49 @@ function Workspace() {
   }
 
   return (
-    <div className="flex h-screen min-h-0 flex-col">
-      {mode === 'mock' ? (
-        <p className="bg-secondary-100 px-4 py-2 text-center text-sm text-secondary-900">
-          Đang dùng dữ liệu trên máy này. Chưa nối Google Sheet — thay đổi chưa được ghi lên Google.
-        </p>
-      ) : null}
-      <PeriodTabs periods={periods} active={activeName} onSelect={selectPeriod} />
-      <div className="flex min-h-0 flex-1">
-        <Sidebar section={section} onSelect={selectSection} onLock={lock} />
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-5">
-          {pageLoading ? null : (
-            <header className="mb-4">
-              <h2 className="text-xl font-semibold">{titles[section]}</h2>
-              {active ? <p className="text-sm text-neutral-700">Kỳ {active.label}</p> : null}
-            </header>
-          )}
-          {pageLoading ? <Loading /> : null}
-          {periodsQuery.error && !(periodsQuery.error instanceof UnauthorizedError) ? (
-            <p className="text-sm text-red-700">{errorMessage(periodsQuery.error)}</p>
-          ) : null}
-          {!periodsQuery.isLoading && periods.length === 0 ? (
-            <p className="text-sm text-neutral-700">
-              Chưa có sheet đúng tên kỳ. Tạo tab tên <span className="font-semibold">11.11.2026-10.01.2027</span>.
+    <SectionActionProvider>
+      {(action) => (
+        <div className="flex h-screen min-h-0 flex-col">
+          {mode === 'mock' ? (
+            <p className="bg-secondary-100 px-4 py-2 text-center text-sm text-secondary-900">
+              Đang dùng dữ liệu trên máy này. Chưa nối Google Sheet — thay đổi chưa được ghi lên Google.
             </p>
           ) : null}
-          {active && periodQuery.error && !(periodQuery.error instanceof UnauthorizedError) ? (
-            <p className="text-sm text-red-700">{errorMessage(periodQuery.error)}</p>
-          ) : null}
-          {active && periodQuery.data && section === 'booking' ? (
-            <BookingCalendar period={active} bookings={periodQuery.data.bookings} />
-          ) : null}
-          {active && periodQuery.data && section === 'details' ? <DetailsView period={active} data={periodQuery.data} /> : null}
-          {active && periodQuery.data && section === 'expenses' ? <ExpensesView period={active} data={periodQuery.data} /> : null}
-          {active && periodQuery.data && section === 'revenue' ? <RevenueView revenue={periodQuery.data.revenue} /> : null}
-        </main>
-      </div>
-    </div>
+          <PeriodTabs periods={periods} active={activeName} onSelect={selectPeriod} />
+          <div className="flex min-h-0 flex-1">
+            <Sidebar section={section} onSelect={selectSection} onLock={lock} />
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-5">
+              {pageLoading ? null : (
+                <header className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-3">
+                    <h2 className="text-xl font-semibold">{titles[section]}</h2>
+                    {active ? <p className="text-sm text-neutral-700">Kỳ {active.label}</p> : null}
+                  </div>
+                  {action}
+                </header>
+              )}
+              {pageLoading ? <Loading /> : null}
+              {periodsQuery.error && !(periodsQuery.error instanceof UnauthorizedError) ? (
+                <p className="text-sm text-red-700">{errorMessage(periodsQuery.error)}</p>
+              ) : null}
+              {!periodsQuery.isLoading && periods.length === 0 ? (
+                <p className="text-sm text-neutral-700">
+                  Chưa có sheet đúng tên kỳ. Tạo tab tên <span className="font-semibold">11.11.2026-10.01.2027</span>.
+                </p>
+              ) : null}
+              {active && periodQuery.error && !(periodQuery.error instanceof UnauthorizedError) ? (
+                <p className="text-sm text-red-700">{errorMessage(periodQuery.error)}</p>
+              ) : null}
+              {active && periodQuery.data && section === 'booking' ? (
+                <BookingCalendar period={active} bookings={periodQuery.data.bookings} />
+              ) : null}
+              {active && periodQuery.data && section === 'details' ? <DetailsView period={active} data={periodQuery.data} /> : null}
+              {active && periodQuery.data && section === 'expenses' ? <ExpensesView period={active} data={periodQuery.data} /> : null}
+              {active && periodQuery.data && section === 'revenue' ? <RevenueView revenue={periodQuery.data.revenue} /> : null}
+            </main>
+          </div>
+        </div>
+      )}
+    </SectionActionProvider>
   )
 }
