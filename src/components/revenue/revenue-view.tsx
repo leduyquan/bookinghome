@@ -8,6 +8,7 @@ import type { Revenue } from '@/types'
 const columnHelper = createColumnHelper<Revenue>()
 
 export function RevenueView({ revenue }: { revenue: Revenue }) {
+  const rows = useMemo(() => [revenue], [revenue])
   const columns = useMemo(
     () => [
       columnHelper.accessor('doanhThu', {
@@ -33,7 +34,12 @@ export function RevenueView({ revenue }: { revenue: Revenue }) {
     ],
     [],
   )
-  const table = useReactTable({ data: [revenue], columns, getCoreRowModel: getCoreRowModel() })
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    autoResetPageIndex: false,
+  })
 
   return (
     <div className="flex flex-col gap-3">
