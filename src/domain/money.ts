@@ -14,3 +14,7 @@ export function pricePerNight(total: number, nights: number): number {
   if (nights <= 0) return 0
   return Math.round(total / nights)
 }
+
+export function bdcCost(total: number): number {
+  return Math.round((total * 15) / 100)
+}

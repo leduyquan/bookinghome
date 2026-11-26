@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { nightsBetween } from '@/domain/dates'
 import { findOverlap, normalizeBooking, staysOverlap } from '@/domain/booking'
 import { cellsForRoom, groupWeeks, weeksCovering } from '@/domain/calendar'
-import { formatVnd, pricePerNight } from '@/domain/money'
+import { bdcCost, formatVnd, pricePerNight } from '@/domain/money'
 import { parsePeriodName, pickPeriod } from '@/domain/period'
 import { computeRevenue } from '@/domain/revenue'
 import type { Booking, BookingInput } from '@/types'
@@ -72,6 +72,8 @@ describe('booking math', () => {
     expect(nightsBetween('2026-11-11', '2026-11-15')).toBe(4)
     expect(pricePerNight(2_137_500, 4)).toBe(534_375)
     expect(pricePerNight(1_000, 3)).toBe(333)
+    expect(bdcCost(1_950_000)).toBe(292_500)
+    expect(bdcCost(1_667_250)).toBe(250_088)
   })
 
   it('treats checkout morning as free for the next guest', () => {

@@ -13,7 +13,7 @@ import { DialogShell } from '@/components/ui/dialog-shell'
 import { ROOMS, SOURCES } from '@/constants'
 import { findOverlap } from '@/domain/booking'
 import { nightsBetween } from '@/domain/dates'
-import { formatVnd, pricePerNight } from '@/domain/money'
+import { bdcCost, formatVnd, pricePerNight } from '@/domain/money'
 import type { Period } from '@/domain/period'
 import { UnauthorizedError, errorMessage } from '@/lib/errors'
 import { isRoomId, isSource, type Booking, type BookingInput, type RoomId } from '@/types'
@@ -88,6 +88,7 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
   })
   const checkIn = useWatch({ control, name: 'checkIn' })
   const checkOut = useWatch({ control, name: 'checkOut' })
+  const source = useWatch({ control, name: 'source' })
   const total = useWatch({ control, name: 'total' })
   const cost = useWatch({ control, name: 'cost' })
   const nights = checkIn && checkOut ? nightsBetween(checkIn, checkOut) : 0
@@ -169,8 +170,11 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
                 label="Nguồn"
                 value={field.value}
                 error={formState.errors.source?.message}
-                options={SOURCES.map((source) => ({ value: source, label: source || 'None' }))}
-                onValueChange={field.onChange}
+                options={SOURCES.map((item) => ({ value: item, label: item || 'None' }))}
+                onValueChange={(next) => {
+                  field.onChange(next)
+                  if (next === 'BDC') setValue('cost', typeof total === 'number' ? bdcCost(total) : 0)
+                }}
               />
             )}
           />
@@ -220,7 +224,10 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
                 required
                 value={field.value}
                 error={formState.errors.total?.message}
-                onChange={field.onChange}
+                onChange={(next) => {
+                  field.onChange(next)
+                  if (source === 'BDC') setValue('cost', typeof next === 'number' ? bdcCost(next) : 0)
+                }}
               />
             )}
           />
@@ -233,7 +240,7 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
             render={({ field }) => (
               <MoneyInput
                 id="booking-cost"
-                label="Chi phí"
+                label={source === 'BDC' ? 'Chi phí (15%)' : 'Chi phí'}
                 allowEmpty={false}
                 value={field.value}
                 error={formState.errors.cost?.message}
