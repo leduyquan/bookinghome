@@ -23,7 +23,7 @@ export function Sidebar({
     <aside className="flex w-52 shrink-0 flex-col border-r border-neutral-100 bg-neutral-50 text-black">
       <div className="border-b border-neutral-100 px-4 py-4">
         <p className="text-xs tracking-wide text-primary uppercase">Sổ nhà</p>
-        <h1 className="text-lg font-semibold text-neutral-800">Booking Home</h1>
+        <h1 className="text-md font-semibold text-neutral-800">4B Mạc Thiên Tích</h1>
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {SECTIONS.map((item) => {

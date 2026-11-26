@@ -17,7 +17,7 @@ export function LedgerTable<T>({ table, empty, footer, minWidth = 'min-w-[640px]
   const columnCount = table.getVisibleLeafColumns().length
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-neutral-200 bg-white">
+    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
       <table className={cn('w-full border-collapse text-sm', minWidth)}>
         <thead className="border-b border-neutral-200 bg-neutral-50 text-left text-neutral-900">
           {table.getHeaderGroups().map((group) => (

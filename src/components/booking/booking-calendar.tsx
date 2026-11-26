@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { toast } from 'sonner'
 
 import { BookingDialog, type BookingSeed } from '@/components/details/booking-dialog'
@@ -27,10 +27,10 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
-      <div className="flex flex-wrap gap-3 text-sm text-neutral-800">
+      <div className="flex flex-wrap gap-5 text-sm text-neutral-800">
         {ROOMS.map((room) => (
           <span key={room.id} className="inline-flex items-center gap-2">
-            <span className="size-2.5 rounded-sm" style={{ backgroundColor: room.header }} />
+            <span className="size-4 rounded-sm" style={{ backgroundColor: room.header }} />
             {room.id} · {room.type}
           </span>
         ))}
@@ -41,37 +41,38 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
           const lastWeek = block.at(-1)
           const last = lastWeek?.at(-1)?.iso
           return (
-            <section key={first} className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-              <div className="bg-primary px-3 py-1.5 text-xs font-semibold text-white">
+            <section key={first} className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+              <div className="bg-primary-400 px-3 py-1.5 text-xs font-semibold text-white">
                 {first && last ? `${formatShort(first)} – ${formatShort(last)}` : ''}
               </div>
-              {block.map((week) => (
-                <table key={week[0]?.iso} className="w-full min-w-[820px] border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-primary text-center font-semibold text-white">
-                      <th className="h-6 w-14 border border-primary-400" />
-                      <th className="w-16 border border-primary-400" />
-                      {WEEKDAY_LABELS.map((label) => (
-                        <th key={label} className="border border-primary-400 px-1">
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                    <tr className="bg-primary-50 text-center text-primary">
-                      <th className="h-6 border border-neutral-200 font-semibold">Room</th>
-                      <th className="border border-neutral-200 font-semibold">Type</th>
-                      {week.map((day) => (
-                        <th
-                          key={day.iso}
-                          className={`border border-neutral-200 font-medium ${day.inPeriod ? 'text-primary' : 'text-neutral-600'}`}
-                        >
-                          {formatShort(day.iso)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ROOMS.map((room) => {
+              <table className="w-full min-w-[820px] border-collapse text-xs">
+                <thead>
+                  <tr className="bg-primary-400 text-center font-semibold text-white">
+                    <th className="h-6 w-14 border border-primary-300">ROOM</th>
+                    <th className="w-16 border border-primary-300">TYPE</th>
+                    {WEEKDAY_LABELS.map((label) => (
+                      <th key={label} className="border border-primary-300 px-1">
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.map((week) => (
+                    <Fragment key={week[0]?.iso}>
+                      <tr className="bg-primary-50 text-center text-primary">
+                        <th className="h-6 border border-neutral-200 bg-neutral-100" />
+                        <th className="border border-neutral-200 bg-neutral-100" />
+                        {week.map((day) => (
+                          <th
+                            key={day.iso}
+                            className={`border border-neutral-200 font-medium ${day.inPeriod ? 'text-primary' : 'text-neutral-600'}`}
+                          >
+                            {formatShort(day.iso)}
+                          </th>
+                        ))}
+                      </tr>
+                      {ROOMS.map((room) => {
                       const cells = cellsForRoom(week, bookings, room.id)
                       return (
                         <tr key={room.id}>
@@ -100,7 +101,7 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
                                 <td key={`${room.id}-${index}`} className="border border-neutral-200 bg-white p-0">
                                   <button
                                     type="button"
-                                    className="h-8 w-full px-1 text-[10px] font-medium text-neutral-600 transition hover:bg-primary-50 hover:text-primary"
+                                    className="h-8 w-full cursor-pointer px-1 text-[10px] font-medium text-transparent transition hover:bg-primary-50 hover:text-primary focus-visible:bg-primary-50 focus-visible:text-primary"
                                     onClick={() => setSeed({ room: room.id, checkIn: cell.iso })}
                                   >
                                     Tạo booking
@@ -113,9 +114,10 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
                         </tr>
                       )
                     })}
-                  </tbody>
-                </table>
-              ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
             </section>
           )
         })}

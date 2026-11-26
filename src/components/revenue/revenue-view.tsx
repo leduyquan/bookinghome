@@ -38,7 +38,6 @@ export function RevenueView({ revenue }: { revenue: Revenue }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-neutral-700">
-        Doanh thu là tổng Giá thu. Chi phí là tổng mục Chi phí vận hành. Lợi nhuận chia đôi cho Quân Duy và Thùy.
       </p>
       <LedgerTable
         table={table}

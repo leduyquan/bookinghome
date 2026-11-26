@@ -88,6 +88,7 @@ textarea {
 }
 
 .booking-day-picker .rdp-month_caption {
+  height: var(--rdp-nav-height);
   font-size: 0.875rem;
 }
 

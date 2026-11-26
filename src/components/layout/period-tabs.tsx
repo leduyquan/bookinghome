@@ -57,7 +57,7 @@ export function PeriodTabs({
               ref={selected ? activeRef : undefined}
               type="button"
               aria-pressed={selected}
-              className={`shrink-0 border-r border-neutral-100 px-5 py-3 text-sm font-semibold whitespace-nowrap ${selected ? 'bg-primary text-white' : 'bg-white text-neutral-800 hover:bg-primary-50'}`}
+              className={`shrink-0 border-r border-neutral-100 px-5 py-3 text-sm font-semibold whitespace-nowrap ${selected ? 'bg-primary-400 text-white' : 'bg-white text-neutral-800 hover:bg-primary-50'}`}
               onClick={() => onSelect(period.sheetName)}
             >
               {period.label}

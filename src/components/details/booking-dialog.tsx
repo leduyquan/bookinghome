@@ -148,6 +148,13 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
       >
         {formError ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p> : null}
         <div className="grid gap-3 sm:grid-cols-2">
+          <FormInput
+            id="booking-guest"
+            label="Tên khách"
+            required
+            error={formState.errors.guestName?.message}
+            {...register('guestName')}
+          />
           <Controller
             control={control}
             name="source"
@@ -157,17 +164,10 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
                 label="Nguồn"
                 value={field.value}
                 error={formState.errors.source?.message}
-                options={SOURCES.map((source) => ({ value: source, label: source || 'Bỏ trống' }))}
+                options={SOURCES.map((source) => ({ value: source, label: source || 'None' }))}
                 onValueChange={field.onChange}
               />
             )}
-          />
-          <FormInput
-            id="booking-guest"
-            label="Tên khách"
-            required
-            error={formState.errors.guestName?.message}
-            {...register('guestName')}
           />
         </div>
         <StayRangeField

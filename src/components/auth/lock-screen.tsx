@@ -28,7 +28,7 @@ export function LockScreen() {
           )
         }}
       >
-        <p className="text-xs font-semibold tracking-wide text-primary uppercase">Booking Home</p>
+        <p className="text-xs font-semibold tracking-wide text-primary">Mạc Thiên Tích</p>
         <h1 className="mt-1 text-2xl font-semibold text-neutral-900">Mở sổ nhà</h1>
         <p className="mt-2 text-sm text-neutral-700">Nhập mật khẩu để xem lịch phòng, chi tiết, chi phí và doanh thu.</p>
         <label className="mt-6 flex flex-col gap-1 text-sm font-semibold" htmlFor="password">

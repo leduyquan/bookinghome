@@ -70,7 +70,7 @@ export function ExpensesView({ period, data }: { period: Period; data: PeriodDat
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Button onClick={() => setCreating(true)}>Tạo chi phí</Button>
+        <Button className="min-w-[7.5rem]" onClick={() => setCreating(true)}>Tạo chi phí</Button>
       </div>
       <LedgerTable
         table={table}

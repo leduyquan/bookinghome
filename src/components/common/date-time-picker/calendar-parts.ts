@@ -17,12 +17,14 @@ export const calendarFormatters: Partial<Formatters> = {
 }
 
 export const calendarClassNames: Partial<ClassNames> = {
-  root: 'booking-day-picker',
-  months: 'flex flex-wrap',
-  month: 'relative',
-  month_caption: 'flex items-center justify-center text-sm font-semibold text-neutral-900',
-  caption_label: 'text-sm font-semibold text-neutral-900',
-  weekday: 'text-[11px] font-semibold tracking-wide text-neutral-700 uppercase',
-  day: 'p-0 text-center',
-  today: 'font-semibold text-stone-900',
+  root: 'rdp-root booking-day-picker',
+  months: 'rdp-months flex',
+  month: 'rdp-month relative',
+  month_caption: 'rdp-month_caption flex h-(--rdp-nav-height) items-center justify-center text-sm font-semibold text-neutral-900',
+  caption_label: 'rdp-caption_label text-sm font-semibold text-neutral-900',
+  weekday: 'rdp-weekday text-[11px] font-semibold tracking-wide text-neutral-700 uppercase',
+  day: 'rdp-day p-0 text-center',
+  today: 'rdp-today font-semibold text-neutral-900',
+  button_previous: 'rdp-button_previous',
+  button_next: 'rdp-button_next',
 }

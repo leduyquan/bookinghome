@@ -18,8 +18,8 @@ import { ledgerClient } from '@/lib/sheets-client'
 import { isSectionId, type SectionId } from '@/types'
 
 const titles: Record<SectionId, string> = {
-  booking: 'Booking',
-  details: 'Chi tiết',
+  booking: 'OCC',
+  details: 'Booking',
   expenses: 'Chi phí',
   revenue: 'Doanh thu',
 }
