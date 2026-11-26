@@ -25,7 +25,7 @@ const schema = z
     checkIn: z.string(),
     checkOut: z.string(),
     room: z.string(),
-    total: z.number({ invalid_type_error: 'Nhập tổng giá' }).int().positive('Tổng giá phải lớn hơn 0'),
+    total: z.number({ invalid_type_error: 'Nhập tổng giá' }).int().min(0, 'Tổng giá phải là số nguyên không âm'),
     cost: z.number({ invalid_type_error: 'Nhập chi phí' }).int().min(0, 'Chi phí phải là số nguyên không âm'),
     paid: z.boolean(),
     note: z.string(),

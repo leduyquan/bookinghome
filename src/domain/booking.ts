@@ -1,4 +1,4 @@
-import { isRealIso, isWithinPeriod, nightsBetween } from '@/domain/dates'
+import { isCheckoutInPeriod, isRealIso, isWithinPeriod, nightsBetween } from '@/domain/dates'
 import { pricePerNight } from '@/domain/money'
 import type { Period } from '@/domain/period'
 import { isRoomId, isSource, type Booking, type BookingInput } from '@/types'
@@ -28,14 +28,14 @@ export function normalizeBooking(input: BookingInput, period: Period, existing: 
   if (!isSource(input.source)) throw new Error('Nguồn không hợp lệ')
   if (!isRoomId(input.room)) throw new Error('Chọn phòng')
   if (!isRealIso(input.checkIn) || !isRealIso(input.checkOut)) throw new Error('Ngày nhận và trả phòng không hợp lệ')
-  if (!isWithinPeriod(input.checkIn, period.start, period.end) || !isWithinPeriod(input.checkOut, period.start, period.end)) {
+  if (!isWithinPeriod(input.checkIn, period.start, period.end) || !isCheckoutInPeriod(input.checkOut, period.start, period.end)) {
     throw new Error('Ngày nhận và trả phòng phải nằm trong kỳ đang mở')
   }
   if (input.checkOut <= input.checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận')
 
   const total = input.total
   const cost = input.cost
-  if (!Number.isInteger(total) || total <= 0) throw new Error('Tổng giá phải là số nguyên lớn hơn 0')
+  if (!Number.isInteger(total) || total < 0) throw new Error('Tổng giá phải là số nguyên không âm')
   if (!Number.isInteger(cost) || cost < 0) throw new Error('Chi phí phải là số nguyên không âm')
 
   const clash = findOverlap(existing, input.room, input.checkIn, input.checkOut, input.id)

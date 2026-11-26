@@ -7,7 +7,7 @@ import { calendarClassNames, calendarComponents, calendarFormatters } from '@/co
 import { PickerFooter } from '@/components/common/date-time-picker/picker-footer'
 import { FormField } from '@/components/common/form-field'
 import { PopoverContent, PopoverRoot, PopoverTrigger } from '@/components/ui/popover'
-import { formatDay, toIso } from '@/domain/dates'
+import { formatDay, latestCheckout, toIso } from '@/domain/dates'
 import { fieldClassName } from '@/lib/utils'
 
 type StayRangeFieldProps = {
@@ -28,7 +28,7 @@ export function StayRangeField({ checkIn, checkOut, min, max, checkInError, chec
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<DateRange | undefined>()
   const minDate = parseDay(min)
-  const maxDate = parseDay(max)
+  const checkoutMax = latestCheckout(max)
   const committed: DateRange | undefined = checkIn
     ? { from: parseDay(checkIn), to: checkOut ? parseDay(checkOut) : undefined }
     : undefined
@@ -72,20 +72,32 @@ export function StayRangeField({ checkIn, checkOut, min, max, checkInError, chec
                 selected={draft}
                 defaultMonth={draft?.from ?? committed?.from ?? minDate}
                 startMonth={minDate}
-                endMonth={maxDate}
-                disabled={{ before: minDate, after: maxDate }}
-                components={calendarComponents}
-                classNames={calendarClassNames}
-                formatters={calendarFormatters}
-                onSelect={(range) => {
+                endMonth={parseDay(checkoutMax)}
+                disabled={(date) => {
+                  const iso = toIso(date)
+                  return iso < min || iso > checkoutMax
+                }}
+                onSelect={(range, triggerDate) => {
+                  const clicked = toIso(triggerDate)
+                  if (clicked < min || clicked > checkoutMax) return
+                  const startIso = draft?.from ? toIso(draft.from) : ''
+                  if (startIso && clicked > startIso) {
+                    setDraft({ from: draft?.from, to: triggerDate })
+                    return
+                  }
+                  if (clicked > max) return
                   if (!range?.from) {
                     setDraft(undefined)
                     return
                   }
                   const start = toIso(range.from)
                   const end = range.to ? toIso(range.to) : ''
-                  setDraft({ from: range.from, to: end && end !== start ? range.to : undefined })
+                  if (start > max) return
+                  setDraft({ from: range.from, to: end && end !== start && end <= checkoutMax ? range.to : undefined })
                 }}
+                components={calendarComponents}
+                classNames={calendarClassNames}
+                formatters={calendarFormatters}
               />
             </PickerFooter>
           </PopoverContent>

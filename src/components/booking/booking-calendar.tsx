@@ -76,10 +76,10 @@ export function BookingCalendar({ period, bookings }: { period: Period; bookings
                       const cells = cellsForRoom(week, bookings, room.id)
                       return (
                         <tr key={room.id}>
-                          <th className="h-8 border border-neutral-200 text-xs text-white" style={{ backgroundColor: room.header }}>
+                          <th className="h-8 border border-neutral-200 text-xs" style={{ backgroundColor: room.header, color: room.label }}>
                             {room.id}
                           </th>
-                          <th className="border border-neutral-200 text-[11px] text-white" style={{ backgroundColor: room.header }}>
+                          <th className="border border-neutral-200 text-[11px]" style={{ backgroundColor: room.header, color: room.label }}>
                             {room.type}
                           </th>
                           {cells.map((cell, index) => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { nightsBetween } from '@/domain/dates'
+import { isCheckoutInPeriod, nightsBetween } from '@/domain/dates'
 import { findOverlap, normalizeBooking, staysOverlap } from '@/domain/booking'
 import { cellsForRoom, groupWeeks, weeksCovering } from '@/domain/calendar'
 import { bdcCost, formatVnd, pricePerNight } from '@/domain/money'
@@ -98,6 +98,23 @@ describe('booking math', () => {
     expect(findOverlap(existing, '202', '2026-11-12', '2026-11-14')).toBeUndefined()
   })
 
+  it('allows checkout on the morning after the last night of the period', () => {
+    const input: BookingInput = {
+      source: 'BDC',
+      guestName: 'Charles',
+      checkIn: '2027-01-09',
+      checkOut: '2027-01-11',
+      room: '301',
+      total: 800_000,
+      cost: 0,
+      note: '',
+    }
+    expect(isCheckoutInPeriod('2027-01-11', period.start, period.end)).toBe(true)
+    expect(normalizeBooking(input, period, [], 'c').nights).toBe(2)
+    expect(() => normalizeBooking({ ...input, checkOut: '2027-01-12' }, period, [], 'c')).toThrow(/trong kỳ/)
+    expect(() => normalizeBooking({ ...input, checkIn: '2027-01-11', checkOut: '2027-01-12' }, period, [], 'c')).toThrow(/trong kỳ/)
+  })
+
   it('rejects a stay that crosses the period boundary', () => {
     const input: BookingInput = {
       source: '',
@@ -110,6 +127,24 @@ describe('booking math', () => {
       note: '',
     }
     expect(() => normalizeBooking(input, period, [], 'x')).toThrow(/trong kỳ/)
+  })
+
+  it('accepts a total of zero and rejects a negative total', () => {
+    const input: BookingInput = {
+      source: '',
+      guestName: 'Khách',
+      checkIn: '2026-11-20',
+      checkOut: '2026-11-21',
+      room: '201',
+      total: 0,
+      cost: 0,
+      note: '',
+    }
+    const saved = normalizeBooking(input, period, [], 'z')
+    expect(saved.total).toBe(0)
+    expect(saved.pricePerNight).toBe(0)
+    expect(saved.net).toBe(0)
+    expect(() => normalizeBooking({ ...input, total: -1 }, period, [], 'z')).toThrow(/Tổng giá/)
   })
 
   it('treats a missing payment flag as unpaid', () => {

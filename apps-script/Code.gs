@@ -20,9 +20,9 @@ var EXPENSE_COL = 15
 var REVENUE_COL = 21
 var CALENDAR_COL = 28
 var ROOMS = {
-  '201': { type: '2 BED', header: '#556B45', cell: '#D5DCC6', ink: '#2A3522' },
-  '202': { type: '1 BED', header: '#A3542E', cell: '#F4D4C0', ink: '#633216' },
-  '301': { type: '1 BED', header: '#7A614A', cell: '#EADDCB', ink: '#3C3126' },
+  '201': { type: '2 BED', header: '#B06A60', cell: '#F6E3DF', ink: '#4A2E2A', label: '#ffffff' },
+  '202': { type: '1 BED', header: '#A3542E', cell: '#F4D4C0', ink: '#633216', label: '#ffffff' },
+  '301': { type: '1 BED', header: '#7A614A', cell: '#EADDCB', ink: '#3C3126', label: '#ffffff' },
 }
 var SOURCE_OK = { '': true, BDC: true, Agoda: true, 'Air bnb': true, 'Khách lẻ': true }
 var WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -388,8 +388,8 @@ function redrawCalendar_(sheet, period, bookings) {
       rowValues[1] = meta.type
       rowBg[0] = meta.header
       rowBg[1] = meta.header
-      rowInk[0] = '#ffffff'
-      rowInk[1] = '#ffffff'
+      rowInk[0] = meta.label
+      rowInk[1] = meta.label
       rowWeight[0] = 'bold'
       rowAlign[0] = 'center'
       rowAlign[1] = 'center'
@@ -466,9 +466,9 @@ function normalizeBooking_(input, period, existing, id) {
   if (!SOURCE_OK[source] && source !== '') throw new Error('Nguồn không hợp lệ')
   if (!Object.prototype.hasOwnProperty.call(SOURCE_OK, source)) throw new Error('Nguồn không hợp lệ')
   if (!ROOMS[room]) throw new Error('Chọn phòng')
-  if (!isWithin_(checkIn, period) || !isWithin_(checkOut, period)) throw new Error('Ngày nhận và trả phòng phải nằm trong kỳ đang mở')
+  if (!isWithin_(checkIn, period) || !isCheckoutInPeriod_(checkOut, period)) throw new Error('Ngày nhận và trả phòng phải nằm trong kỳ đang mở')
   if (checkOut <= checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận')
-  var total = asInt_(input.total, 'Tổng giá phải là số nguyên lớn hơn 0', 1)
+  var total = asInt_(input.total, 'Tổng giá phải là số nguyên không âm', 0)
   var cost = asInt_(input.cost, 'Chi phí phải là số nguyên không âm', 0)
   var clash = findOverlap_(existing, room, checkIn, checkOut, input.id ? String(input.id) : '')
   if (clash) throw new Error('Phòng ' + room + ' đã có ' + clash.guestName + ' trong các đêm này')
@@ -631,6 +631,16 @@ function isRealIso_(iso) {
 
 function isWithin_(iso, period) {
   return isRealIso_(iso) && iso >= period.start && iso <= period.end
+}
+
+function dayAfter_(iso) {
+  var date = parseIso_(iso)
+  date.setDate(date.getDate() + 1)
+  return isoOf_(date)
+}
+
+function isCheckoutInPeriod_(iso, period) {
+  return isRealIso_(iso) && iso >= period.start && iso <= dayAfter_(period.end)
 }
 
 function nightsBetween_(checkIn, checkOut) {

@@ -1,7 +1,7 @@
 export const ROOMS = [
-  { id: '201', type: '2 BED', header: '#556B45', cell: '#D5DCC6', ink: '#2A3522' },
-  { id: '202', type: '1 BED', header: '#A3542E', cell: '#F4D4C0', ink: '#633216' },
-  { id: '301', type: '1 BED', header: '#7A614A', cell: '#EADDCB', ink: '#3C3126' },
+  { id: '201', type: '2 BED', header: '#B06A60', cell: '#F6E3DF', ink: '#4A2E2A', label: '#ffffff' },
+  { id: '202', type: '1 BED', header: '#A3542E', cell: '#F4D4C0', ink: '#633216', label: '#ffffff' },
+  { id: '301', type: '1 BED', header: '#7A614A', cell: '#EADDCB', ink: '#3C3126', label: '#ffffff' },
 ] as const
 
 export const ROOM_IDS = ['201', '202', '301'] as const

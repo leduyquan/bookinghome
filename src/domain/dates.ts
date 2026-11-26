@@ -1,4 +1,4 @@
-import { format, parseISO } from 'date-fns'
+import { addDays, format, parseISO } from 'date-fns'
 
 export function isRealIso(iso: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false
@@ -31,4 +31,17 @@ export function nightsBetween(checkIn: string, checkOut: string): number {
 
 export function isWithinPeriod(iso: string, start: string, end: string): boolean {
   return iso >= start && iso <= end
+}
+
+export function addDaysIso(iso: string, days: number): string {
+  return format(addDays(parseISO(iso), days), 'yyyy-MM-dd')
+}
+
+/** Checkout is the morning after the last night, so it may be the day after the period ends. */
+export function latestCheckout(periodEnd: string): string {
+  return addDaysIso(periodEnd, 1)
+}
+
+export function isCheckoutInPeriod(iso: string, start: string, end: string): boolean {
+  return iso >= start && iso <= latestCheckout(end)
 }
