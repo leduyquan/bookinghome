@@ -77,16 +77,16 @@ function Workspace() {
   return (
     <SectionActionProvider>
       {(action) => (
-        <div className="flex h-screen min-h-0 flex-col">
+        <div className="flex h-dvh min-h-0 flex-col">
           {mode === 'mock' ? (
             <p className="bg-secondary-100 px-4 py-2 text-center text-sm text-secondary-900">
               Đang dùng dữ liệu trên máy này. Chưa nối Google Sheet — thay đổi chưa được ghi lên Google.
             </p>
           ) : null}
           <PeriodTabs periods={periods} active={activeName} onSelect={selectPeriod} />
-          <div className="flex min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <Sidebar section={section} onSelect={selectSection} onLock={lock} />
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-5">
+            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto p-3 pb-20 lg:p-5 lg:pb-5">
               {pageLoading ? null : (
                 <header className="mb-4 flex items-center justify-between gap-3">
                   <div className="flex min-w-0 flex-wrap items-baseline gap-x-3">
@@ -102,7 +102,7 @@ function Workspace() {
               ) : null}
               {!periodsQuery.isLoading && periods.length === 0 ? (
                 <p className="text-sm text-neutral-700">
-                  Chưa có sheet đúng tên kỳ. Tạo tab tên <span className="font-semibold">11.11.2026-10.01.2027</span>.
+                  Chưa có sheet đúng tên kỳ. Tạo tab tên <span className="font-semibold">11.01.2027-10.05.2027</span>.
                 </p>
               ) : null}
               {active && periodQuery.error && !(periodQuery.error instanceof UnauthorizedError) ? (
@@ -113,7 +113,9 @@ function Workspace() {
               ) : null}
               {active && periodQuery.data && section === 'details' ? <DetailsView period={active} data={periodQuery.data} /> : null}
               {active && periodQuery.data && section === 'expenses' ? <ExpensesView period={active} data={periodQuery.data} /> : null}
-              {active && periodQuery.data && section === 'revenue' ? <RevenueView revenue={periodQuery.data.revenue} /> : null}
+              {active && periodQuery.data && section === 'revenue' ? (
+                <RevenueView period={active} bookings={periodQuery.data.bookings} expenses={periodQuery.data.expenses} />
+              ) : null}
             </main>
           </div>
         </div>

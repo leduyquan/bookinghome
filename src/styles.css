@@ -40,6 +40,7 @@ html,
 body,
 #root {
   height: 100%;
+  height: 100dvh;
 }
 
 body {
@@ -54,6 +55,12 @@ input,
 select,
 textarea {
   font-family: inherit;
+}
+
+.occ-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .period-scroll {
@@ -80,6 +87,16 @@ textarea {
   --rdp-nav_button-width: 2rem;
   --rdp-months-gap: 1.5rem;
   --rdp-outside-opacity: 0.45;
+}
+
+.booking-day-picker .rdp-today .rdp-day_button {
+  box-shadow: inset 0 0 0 2px var(--color-primary);
+}
+
+.booking-day-picker .rdp-today.rdp-selected .rdp-day_button,
+.booking-day-picker .rdp-today.rdp-range_start .rdp-day_button,
+.booking-day-picker .rdp-today.rdp-range_end .rdp-day_button {
+  box-shadow: inset 0 0 0 2px #fff;
 }
 
 .booking-day-picker .rdp-selected {

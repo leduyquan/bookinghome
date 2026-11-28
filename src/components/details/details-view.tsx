@@ -8,7 +8,7 @@ import { LedgerTable } from '@/components/common/ledger-table'
 import { BookingDialog } from '@/components/details/booking-dialog'
 import { useSectionAction } from '@/components/layout/section-action'
 import { Button } from '@/components/ui/button'
-import { sortBookings } from '@/domain/booking'
+import { bookingMatchesQuery, sortBookings } from '@/domain/booking'
 import { formatDay } from '@/domain/dates'
 import { formatGrouped, formatVnd } from '@/domain/money'
 import type { Period } from '@/domain/period'
@@ -16,6 +16,7 @@ import { UnauthorizedError, errorMessage } from '@/lib/errors'
 import { useLedger } from '@/lib/ledger'
 import { requirePassword } from '@/lib/session'
 import { ledgerClient } from '@/lib/sheets-client'
+import { fieldClassName } from '@/lib/utils'
 import type { Booking, BookingInput, PeriodData } from '@/types'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
@@ -29,8 +30,17 @@ export function DetailsView({ period, data }: { period: Period; data: PeriodData
   const [creating, setCreating] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null)
   const [savingPaidId, setSavingPaidId] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [queryPeriod, setQueryPeriod] = useState(period.sheetName)
+  if (queryPeriod !== period.sheetName) {
+    setQueryPeriod(period.sheetName)
+    setQuery('')
+  }
   const savingPaidRef = useRef<string | null>(null)
-  const rows = useMemo(() => sortBookings(data.bookings), [data.bookings])
+  const rows = useMemo(
+    () => sortBookings(data.bookings).filter((booking) => bookingMatchesQuery(booking, query)),
+    [data.bookings, query],
+  )
   const totals = useMemo(
     () => ({
       total: rows.reduce((sum, row) => sum + row.total, 0),
@@ -74,6 +84,8 @@ export function DetailsView({ period, data }: { period: Period; data: PeriodData
           cost: booking.cost,
           paid: !booking.paid,
           note: booking.note,
+          locked: booking.locked,
+          settled: booking.settled,
         },
         {
           onSuccess: (data) => {
@@ -100,6 +112,7 @@ export function DetailsView({ period, data }: { period: Period; data: PeriodData
       columnHelper.accessor('guestName', {
         header: 'Tên khách',
         cell: (info) => {
+          if (info.row.original.locked) return 'Khóa'
           const name = info.getValue()
           if (!name) return '—'
           return (
@@ -126,7 +139,7 @@ export function DetailsView({ period, data }: { period: Period; data: PeriodData
           return (
             <button
               type="button"
-              disabled={saving}
+              disabled={saving || info.row.original.locked}
               aria-busy={saving}
               className={`inline-flex w-16 shrink-0 items-center justify-center rounded-md px-2 py-1 text-xs font-semibold text-white ${paid ? 'bg-green-700' : 'bg-orange-500'}`}
               onClick={() => togglePaid(info.row.original)}
@@ -153,13 +166,16 @@ export function DetailsView({ period, data }: { period: Period; data: PeriodData
         header: '',
         cell: (info) => (
           <div className="flex justify-end gap-1">
-            <Button size="icon" variant="ghost" aria-label={`Sửa ${info.row.original.guestName}`} onClick={() => setEditing(info.row.original)}>
-              <Pencil className="size-4" />
-            </Button>
+            {info.row.original.locked ? null : (
+              <Button size="icon" variant="ghost" className="size-7" aria-label={`Sửa ${info.row.original.guestName}`} onClick={() => setEditing(info.row.original)}>
+                <Pencil className="size-4" />
+              </Button>
+            )}
             <Button
               size="icon"
               variant="ghost"
-              aria-label={`Xóa ${info.row.original.guestName}`}
+              className="size-7"
+              aria-label={info.row.original.locked ? 'Xóa khóa' : `Xóa ${info.row.original.guestName}`}
               onClick={() => setDeleteTarget(info.row.original)}
             >
               <Trash2 className="size-4 text-red-700" />
@@ -184,9 +200,17 @@ export function DetailsView({ period, data }: { period: Period; data: PeriodData
 
   return (
     <div className="flex flex-col gap-4">
+      <input
+        type="search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Tìm nguồn, tên, phòng, tổng cộng"
+        aria-label="Tìm booking"
+        className={fieldClassName}
+      />
       <LedgerTable
         table={table}
-        empty="Chưa có booking trong kỳ này."
+        empty={query.trim() ? 'Không có booking khớp.' : 'Chưa có booking trong kỳ này.'}
         minWidth="min-w-[1240px]"
         truncate={['guestName', 'note']}
         alignRight={['nights', 'pricePerNight', 'total', 'cost', 'net']}
@@ -194,20 +218,20 @@ export function DetailsView({ period, data }: { period: Period; data: PeriodData
         footer={
           <>
             <tr>
-              <td className="px-3 py-2" colSpan={8}>
+              <td className="px-3 py-1" colSpan={8}>
                 Tổng
               </td>
-              <td className="px-3 py-2 text-right">{formatGrouped(totals.total)}</td>
-              <td className="px-3 py-2 text-right">{formatGrouped(totals.cost)}</td>
-              <td className="px-3 py-2 text-right">{formatGrouped(totals.paidNet)}</td>
+              <td className="px-3 py-1 text-right">{formatGrouped(totals.total)}</td>
+              <td className="px-3 py-1 text-right">{formatGrouped(totals.cost)}</td>
+              <td className="px-3 py-1 text-right">{formatGrouped(totals.paidNet)}</td>
               <td />
               <td colSpan={2} />
             </tr>
             <tr>
-              <td className="px-3 py-2 text-right" colSpan={10}>
+              <td className="px-3 py-1 text-right" colSpan={10}>
                 Giá thu ước tính
               </td>
-              <td className="px-3 py-2 text-right">{formatGrouped(totals.net)}</td>
+              <td className="px-3 py-1 text-right">{formatGrouped(totals.net)}</td>
               <td />
               <td colSpan={2} />
             </tr>

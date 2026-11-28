@@ -9,8 +9,10 @@ import {
   mockLogin,
   mockSaveBooking,
   mockSaveExpense,
+  mockSettleSlice,
 } from '@/lib/mock-store'
-import type { BookingInput, ExpenseInput, PeriodData } from '@/types'
+import { canonicalSource } from '@/constants'
+import type { Booking, BookingInput, ExpenseInput, PeriodData } from '@/types'
 
 const SCRIPT_URL = (import.meta.env.VITE_APPS_SCRIPT_URL ?? '').trim()
 
@@ -64,7 +66,20 @@ function toPeriod(item: { sheetName: string; start: string; end: string }): Peri
 
 function asPeriodData(data: ScriptOk): PeriodData {
   if (!data.bookings || !data.expenses || !data.revenue) throw new Error('Dữ liệu kỳ không hợp lệ')
-  return { bookings: data.bookings, expenses: data.expenses, revenue: data.revenue }
+  return {
+    bookings: data.bookings.map(normalizeLoadedBooking),
+    expenses: data.expenses,
+    revenue: data.revenue,
+  }
+}
+
+function normalizeLoadedBooking(booking: Booking): Booking {
+  return {
+    ...booking,
+    source: canonicalSource(booking.source) as Booking['source'],
+    locked: booking.locked === true,
+    settled: booking.settled === true,
+  }
 }
 
 export const ledgerClient = {
@@ -100,5 +115,9 @@ export const ledgerClient = {
   async deleteExpense(password: string, sheetName: string, id: string) {
     if (isMockMode()) return mockDeleteExpense(sheetName, id)
     return asPeriodData(await post(password, 'deleteExpense', { sheetName, id }))
+  },
+  async settleSlice(password: string, sheetName: string, start: string, end: string, settled: boolean) {
+    if (isMockMode()) return mockSettleSlice(sheetName, start, end, settled)
+    return asPeriodData(await post(password, 'settleSlice', { sheetName, start, end, settled }))
   },
 }

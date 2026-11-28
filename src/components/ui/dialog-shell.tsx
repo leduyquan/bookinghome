@@ -26,7 +26,7 @@ export function DialogShell({ open, onOpenChange, title, description, children, 
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <Dialog.Content
           className={cn(
-            'fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-white p-5 shadow-xl',
+            'fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:max-h-[90vh] sm:w-[calc(100%-2rem)] sm:p-5',
             className,
           )}
           onFocusOutside={(event) => {

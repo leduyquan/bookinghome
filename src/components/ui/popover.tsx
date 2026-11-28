@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 
 export const PopoverRoot = Popover.Root
 export const PopoverTrigger = Popover.Trigger
+export const PopoverClose = Popover.Close
 
 export function PopoverContent({ className, align = 'start', sideOffset = 6, ...props }: ComponentProps<typeof Popover.Content>) {
   return (

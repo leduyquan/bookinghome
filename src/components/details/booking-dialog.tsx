@@ -13,7 +13,8 @@ import { DialogShell } from '@/components/ui/dialog-shell'
 import { ROOMS, SOURCES } from '@/constants'
 import { findOverlap } from '@/domain/booking'
 import { nightsBetween } from '@/domain/dates'
-import { bdcCost, formatVnd, pricePerNight } from '@/domain/money'
+import { canonicalSource } from '@/constants'
+import { formatVnd, pricePerNight } from '@/domain/money'
 import type { Period } from '@/domain/period'
 import { UnauthorizedError, errorMessage } from '@/lib/errors'
 import { isRoomId, isSource, type Booking, type BookingInput, type RoomId } from '@/types'
@@ -31,7 +32,7 @@ const schema = z
     note: z.string(),
   })
   .superRefine((value, ctx) => {
-    if (!isSource(value.source)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['source'], message: 'Nguồn không hợp lệ' })
+    if (!isSource(value.source)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['source'], message: 'Chọn nguồn' })
     if (!value.guestName.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['guestName'], message: 'Nhập tên khách' })
     if (!value.checkIn) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['checkIn'], message: 'Chọn ngày nhận phòng' })
     if (value.checkIn && !value.checkOut) {
@@ -53,7 +54,7 @@ type FormValues = {
 }
 
 const emptyValues: FormValues = {
-  source: '',
+  source: 'Khách lẻ',
   guestName: '',
   checkIn: '',
   checkOut: '',
@@ -88,7 +89,6 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
   })
   const checkIn = useWatch({ control, name: 'checkIn' })
   const checkOut = useWatch({ control, name: 'checkOut' })
-  const source = useWatch({ control, name: 'source' })
   const total = useWatch({ control, name: 'total' })
   const cost = useWatch({ control, name: 'cost' })
   const nights = checkIn && checkOut ? nightsBetween(checkIn, checkOut) : 0
@@ -101,7 +101,7 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
     reset(
       initial
         ? {
-            source: initial.source,
+            source: canonicalSource(initial.source),
             guestName: initial.guestName,
             checkIn: initial.checkIn,
             checkOut: initial.checkOut,
@@ -137,10 +137,12 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
             cost: values.cost,
             paid: values.paid,
             note: values.note,
+            locked: false,
+            settled: initial?.settled === true,
           }
           const clash = findOverlap(bookings, input.room, input.checkIn, input.checkOut, initial?.id)
           if (clash) {
-            setError('room', { message: `Phòng ${input.room} đã có ${clash.guestName} trong các đêm này` })
+            setError('room', { message: `Phòng ${input.room} đã có ${clash.locked ? 'khóa' : clash.guestName} trong các đêm này` })
             return
           }
           setFormError(null)
@@ -170,10 +172,10 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
                 label="Nguồn"
                 value={field.value}
                 error={formState.errors.source?.message}
-                options={SOURCES.map((item) => ({ value: item, label: item || 'None' }))}
+                options={[{ value: '', label: 'Chọn nguồn' }, ...SOURCES.map((item) => ({ value: item, label: item }))]}
                 onValueChange={(next) => {
                   field.onChange(next)
-                  if (next === 'BDC') setValue('cost', typeof total === 'number' ? bdcCost(total) : 0)
+                  setValue('paid', next === 'Agoda')
                 }}
               />
             )}
@@ -224,10 +226,7 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
                 required
                 value={field.value}
                 error={formState.errors.total?.message}
-                onChange={(next) => {
-                  field.onChange(next)
-                  if (source === 'BDC') setValue('cost', typeof next === 'number' ? bdcCost(next) : 0)
-                }}
+                onChange={field.onChange}
               />
             )}
           />
@@ -240,7 +239,7 @@ export function BookingDialog({ open, period, bookings, initial, seed, pending, 
             render={({ field }) => (
               <MoneyInput
                 id="booking-cost"
-                label={source === 'BDC' ? 'Chi phí (15%)' : 'Chi phí'}
+                label="Chi phí"
                 allowEmpty={false}
                 value={field.value}
                 error={formState.errors.cost?.message}

@@ -57,7 +57,7 @@ export function LedgerTable<T>({ table, empty, footer, minWidth = 'min-w-[640px]
                     <td
                       key={cell.id}
                       className={cn(
-                        'px-3 py-2 text-black',
+                        'px-3 py-1.5 text-black',
                         clip ? 'max-w-30 truncate' : 'whitespace-nowrap',
                         right.has(cell.column.id) && 'text-right',
                         center.has(cell.column.id) && 'text-center',

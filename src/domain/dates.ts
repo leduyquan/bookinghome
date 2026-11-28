@@ -1,4 +1,4 @@
-import { addDays, format, parseISO } from 'date-fns'
+import { addDays, addMonths, format, parseISO } from 'date-fns'
 
 export function isRealIso(iso: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false
@@ -44,4 +44,33 @@ export function latestCheckout(periodEnd: string): string {
 
 export function isCheckoutInPeriod(iso: string, start: string, end: string): boolean {
   return iso >= start && iso <= latestCheckout(end)
+}
+
+export type DateSpan = { start: string; end: string }
+
+/** Slices a period into 11th-to-10th months when the period itself starts on the 11th. */
+export function monthSlices(start: string, end: string): DateSpan[] {
+  const slices: DateSpan[] = []
+  let cursor = start
+  while (cursor <= end) {
+    const sliceEnd = addDaysIso(format(addMonths(parseISO(cursor), 1), 'yyyy-MM-dd'), -1)
+    const capped = sliceEnd > end ? end : sliceEnd
+    slices.push({ start: cursor, end: capped })
+    if (capped >= end) break
+    cursor = addDaysIso(capped, 1)
+  }
+  return slices
+}
+
+/** Two OCC halves. A four-month period becomes two blocks of about two months. */
+export function periodHalves(start: string, end: string): DateSpan[] {
+  const slices = monthSlices(start, end)
+  if (slices.length <= 1) return [{ start, end }]
+  const mid = Math.ceil(slices.length / 2)
+  const first = slices.slice(0, mid)
+  const second = slices.slice(mid)
+  return [
+    { start: first[0]!.start, end: first[first.length - 1]!.end },
+    { start: second[0]!.start, end: second[second.length - 1]!.end },
+  ]
 }

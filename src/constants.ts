@@ -6,9 +6,34 @@ export const ROOMS = [
 
 export const ROOM_IDS = ['201', '202', '301'] as const
 
-export const SOURCES = ['', 'BDC', 'Agoda', 'Air bnb', 'Khách lẻ'] as const
+export const SOURCES = ['Booking.com', 'Agoda', 'Air bnb', 'Khách lẻ'] as const
 
 export const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'] as const
+
+export function sourceMark(source: string): string {
+  if (source === 'Booking.com' || source === 'BDC') return 'B'
+  if (source === 'Agoda') return 'A'
+  if (source === 'Air bnb') return 'N'
+  if (source === 'Khách lẻ') return 'K'
+  return ''
+}
+
+export function canonicalSource(source: string): string {
+  if (source === 'BDC') return 'Booking.com'
+  return source
+}
+
+/** Placeholder pages. Replace these when the real listing URLs are known. */
+export const SOURCE_LINKS = {
+  'Booking.com': 'https://www.booking.com/',
+  Agoda: 'https://www.agoda.com/',
+} as const
+
+export function sourceLink(source: string): string | undefined {
+  const name = canonicalSource(source)
+  if (name === 'Booking.com' || name === 'Agoda') return SOURCE_LINKS[name]
+  return undefined
+}
 
 export const SECTIONS = [
   { id: 'booking', label: 'OCC' },

@@ -1,4 +1,6 @@
 import { normalizeBooking } from '@/domain/booking'
+import { checkoutSliceIndex } from '@/domain/revenue'
+import { monthSlices } from '@/domain/dates'
 import { normalizeExpense } from '@/domain/expense'
 import { computeRevenue } from '@/domain/revenue'
 import { parsePeriodName, type Period } from '@/domain/period'
@@ -11,7 +13,7 @@ const LOCAL_PASSWORD = 'quanduy123'
 type Bucket = { bookings: Booking[]; expenses: Expense[] }
 type MockDb = Record<string, Bucket>
 
-const PERIOD_NAMES = ['11.09.2026-10.11.2026', '11.11.2026-10.01.2027', '11.01.2027-10.03.2027'] as const
+const PERIOD_NAMES = ['11.09.2026-10.11.2026', '11.11.2026-10.01.2027', '11.01.2027-10.05.2027'] as const
 
 function seedBooking(periodName: string, existing: Booking[], input: BookingInput, id: string): Booking {
   const period = parsePeriodName(periodName)
@@ -53,7 +55,7 @@ export function createSeed(): MockDb {
   }
   addCurrent(
     {
-      source: 'BDC',
+      source: 'Booking.com',
       guestName: 'Mario Sorgente',
       checkIn: '2026-11-11',
       checkOut: '2026-11-13',
@@ -66,7 +68,7 @@ export function createSeed(): MockDb {
   )
   addCurrent(
     {
-      source: 'BDC',
+      source: 'Booking.com',
       guestName: 'Bay Tsui',
       checkIn: '2026-11-11',
       checkOut: '2026-11-15',
@@ -79,7 +81,7 @@ export function createSeed(): MockDb {
   )
   addCurrent(
     {
-      source: '',
+      source: 'Khách lẻ',
       guestName: 'Khách Anh Quân',
       checkIn: '2026-11-13',
       checkOut: '2026-11-16',
@@ -126,7 +128,7 @@ export function createSeed(): MockDb {
         seedExpense(current, { name: 'Tiền điện', detail: 'Tháng 11', date: '2026-11-20', amount: 871_020 }, 'seed-power'),
       ],
     },
-    '11.01.2027-10.03.2027': { bookings: [], expenses: [] },
+    '11.01.2027-10.05.2027': { bookings: [], expenses: [] },
   }
 }
 
@@ -212,6 +214,19 @@ export function mockSaveExpense(sheetName: string, input: ExpenseInput): PeriodD
   const index = bucket.expenses.findIndex((expense) => expense.id === id)
   if (index >= 0) bucket.expenses[index] = next
   else bucket.expenses.push(next)
+  persist(db)
+  return snapshot(bucket)
+}
+
+export function mockSettleSlice(sheetName: string, start: string, end: string, settled: boolean): PeriodData {
+  const db = load()
+  const { period, bucket } = bucketOf(db, sheetName)
+  const slices = monthSlices(period.start, period.end)
+  const index = slices.findIndex((slice) => slice.start === start && slice.end === end)
+  if (index < 0) throw new Error('Không tìm thấy tháng')
+  bucket.bookings = bucket.bookings.map((booking) =>
+    checkoutSliceIndex(booking.checkOut, slices, period.end) === index ? { ...booking, settled } : booking,
+  )
   persist(db)
   return snapshot(bucket)
 }

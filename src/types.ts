@@ -6,7 +6,7 @@ export type SectionId = 'booking' | 'details' | 'expenses' | 'revenue'
 
 export type Booking = {
   id: string
-  source: Source
+  source: Source | ''
   guestName: string
   checkIn: string
   checkOut: string
@@ -18,11 +18,13 @@ export type Booking = {
   net: number
   paid: boolean
   note: string
+  locked: boolean
+  settled: boolean
 }
 
 export type BookingInput = {
   id?: string
-  source: Source
+  source: Source | ''
   guestName: string
   checkIn: string
   checkOut: string
@@ -31,6 +33,8 @@ export type BookingInput = {
   cost: number
   paid?: boolean
   note: string
+  locked?: boolean
+  settled?: boolean
 }
 
 export type Expense = {
@@ -54,8 +58,6 @@ export type Revenue = {
   doanhThuUocTinh: number
   chiPhi: number
   loiNhuan: number
-  quanDuy: number
-  thuy: number
 }
 
 export type PeriodData = {

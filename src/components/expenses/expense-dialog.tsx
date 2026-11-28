@@ -9,6 +9,7 @@ import { FormTextarea } from '@/components/common/form-textarea'
 import { MoneyInput } from '@/components/common/money-input'
 import { Button } from '@/components/ui/button'
 import { DialogShell } from '@/components/ui/dialog-shell'
+import { todayIso } from '@/domain/dates'
 import type { Period } from '@/domain/period'
 import { UnauthorizedError, errorMessage } from '@/lib/errors'
 import type { Expense, ExpenseInput } from '@/types'
@@ -34,6 +35,12 @@ type FormValues = {
 
 const emptyValues: FormValues = { name: '', detail: '', date: '', amount: null }
 
+function defaultExpenseDate(period: Period): string {
+  const today = todayIso()
+  if (today >= period.start && today <= period.end) return today
+  return period.start
+}
+
 type ExpenseDialogProps = {
   open: boolean
   period: Period
@@ -56,9 +63,9 @@ export function ExpenseDialog({ open, period, initial, pending, onOpenChange, on
     reset(
       initial
         ? { name: initial.name, detail: initial.detail, date: initial.date, amount: initial.amount }
-        : emptyValues,
+        : { ...emptyValues, date: defaultExpenseDate(period) },
     )
-  }, [open, initial, reset])
+  }, [open, initial, period, reset])
 
   return (
     <DialogShell open={open} className="max-w-lg" title={initial ? 'Sửa chi phí' : 'Tạo chi phí'} onOpenChange={onOpenChange}>
@@ -83,7 +90,20 @@ export function ExpenseDialog({ open, period, initial, pending, onOpenChange, on
       >
         {formError ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</p> : null}
         <FormInput id="expense-name" label="Chi phí" required error={formState.errors.name?.message} {...register('name')} />
-        <FormTextarea id="expense-detail" label="Chi tiết" {...register('detail')} />
+        <Controller
+          control={control}
+          name="amount"
+          render={({ field }) => (
+            <MoneyInput
+              id="expense-amount"
+              label="Số tiền"
+              required
+              value={field.value}
+              error={formState.errors.amount?.message}
+              onChange={field.onChange}
+            />
+          )}
+        />
         <Controller
           control={control}
           name="date"
@@ -100,20 +120,7 @@ export function ExpenseDialog({ open, period, initial, pending, onOpenChange, on
             />
           )}
         />
-        <Controller
-          control={control}
-          name="amount"
-          render={({ field }) => (
-            <MoneyInput
-              id="expense-amount"
-              label="Số tiền"
-              required
-              value={field.value}
-              error={formState.errors.amount?.message}
-              onChange={field.onChange}
-            />
-          )}
-        />
+        <FormTextarea id="expense-detail" label="Ghi chú" {...register('detail')} />
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
             Hủy

@@ -46,18 +46,18 @@ export function ExpensesView({ period, data }: { period: Period; data: PeriodDat
   const columns = useMemo(
     () => [
       columnHelper.accessor('name', { header: 'Chi phí' }),
-      columnHelper.accessor('detail', { header: 'Chi tiết', cell: (info) => info.getValue() || '—' }),
-      columnHelper.accessor('date', { header: 'Ngày chi', cell: (info) => formatDay(info.getValue()) }),
       columnHelper.accessor('amount', { header: 'Số tiền', cell: (info) => formatVnd(info.getValue()) }),
+      columnHelper.accessor('date', { header: 'Ngày chi', cell: (info) => formatDay(info.getValue()) }),
+      columnHelper.accessor('detail', { header: 'Ghi chú', cell: (info) => info.getValue() || '—' }),
       columnHelper.display({
         id: 'actions',
         header: '',
         cell: (info) => (
           <div className="flex justify-end gap-1">
-            <Button size="icon" variant="ghost" aria-label={`Sửa ${info.row.original.name}`} onClick={() => setEditing(info.row.original)}>
+            <Button size="icon" variant="ghost" className="size-7" aria-label={`Sửa ${info.row.original.name}`} onClick={() => setEditing(info.row.original)}>
               <Pencil className="size-4" />
             </Button>
-            <Button size="icon" variant="ghost" aria-label={`Xóa ${info.row.original.name}`} onClick={() => setDeleteTarget(info.row.original)}>
+            <Button size="icon" variant="ghost" className="size-7" aria-label={`Xóa ${info.row.original.name}`} onClick={() => setDeleteTarget(info.row.original)}>
               <Trash2 className="size-4 text-red-700" />
             </Button>
           </div>
@@ -85,11 +85,9 @@ export function ExpensesView({ period, data }: { period: Period; data: PeriodDat
         alignRight={['amount']}
         footer={
           <tr>
-            <td className="px-3 py-2" colSpan={3}>
-              Tổng
-            </td>
-            <td className="px-3 py-2 text-right">{formatVnd(total)}</td>
-            <td />
+            <td className="px-3 py-1">Tổng</td>
+            <td className="px-3 py-1 text-right">{formatVnd(total)}</td>
+            <td colSpan={3} />
           </tr>
         }
       />

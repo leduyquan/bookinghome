@@ -3,28 +3,30 @@
  * Mỗi kỳ là một tab. Google Sheet không cho dấu / trong tên tab,
  * nên đặt tên 11.11.2026-10.01.2027 (web vẫn hiện 11/11/2026 - 10/01/2027).
  *
- * Bố cục một tab:
- * A–M  Chi tiết
- * N    trống
- * O–S  Chi phí
- * T    trống
- * U–Z  Doanh thu (script ghi lại)
- * AA   trống
- * AB+  Lịch OCC (script vẽ lại)
+ * Bố cục một tab, sau khi script chèn cột Khóa và Đã chốt?:
+ * A–O  Chi tiết (N Khóa, O Đã chốt?)
+ * P    trống
+ * Q–U  Chi phí
+ * V    trống
+ * W–AA Doanh thu theo tháng (script ghi lại)
+ * AB   trống
+ * AC+  Lịch OCC (script vẽ lại)
  *
  * Script properties: APP_PASSWORD = quanduy123
  * Deploy: Web app, Execute as Me, Who has access: Anyone.
  */
 var DETAIL_COL = 1
-var EXPENSE_COL = 15
-var REVENUE_COL = 21
-var CALENDAR_COL = 28
+var DETAIL_WIDTH = 15
+var EXPENSE_COL = 17
+var REVENUE_COL = 23
+var CALENDAR_COL = 30
+var CALENDAR_WIDTH = 16
 var ROOMS = {
   '201': { type: '2 BED', header: '#B06A60', cell: '#F6E3DF', ink: '#4A2E2A', label: '#ffffff' },
   '202': { type: '1 BED', header: '#A3542E', cell: '#F4D4C0', ink: '#633216', label: '#ffffff' },
   '301': { type: '1 BED', header: '#7A614A', cell: '#EADDCB', ink: '#3C3126', label: '#ffffff' },
 }
-var SOURCE_OK = { '': true, BDC: true, Agoda: true, 'Air bnb': true, 'Khách lẻ': true }
+var SOURCE_OK = { 'Booking.com': true, BDC: true, Agoda: true, 'Air bnb': true, 'Khách lẻ': true }
 var WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
 function doGet() {
@@ -71,6 +73,7 @@ function handle_(body) {
   if (body.action === 'deleteBooking') return okData_(deleteBooking_(body.sheetName, body.id))
   if (body.action === 'saveExpense') return okData_(saveExpense_(body.sheetName, body.expense || {}))
   if (body.action === 'deleteExpense') return okData_(deleteExpense_(body.sheetName, body.id))
+  if (body.action === 'settleSlice') return okData_(settleSlice_(body.sheetName, body.start, body.end, body.settled))
   return { ok: false, error: 'Hành động không hợp lệ' }
 }
 
@@ -99,7 +102,7 @@ function readPeriod_(sheetName, refresh) {
   var expenses = readExpenses_(sheet)
   var revenue = computeRevenue_(bookings, expenses)
   if (refresh) {
-    writeRevenue_(sheet, revenue)
+    writeRevenue_(sheet, period, bookings, expenses)
     redrawCalendar_(sheet, period, bookings)
   }
   return { bookings: bookings, expenses: expenses, revenue: revenue }
@@ -123,7 +126,7 @@ function saveBooking_(sheetName, input) {
   updated.sort(compareBookings_)
   writeBookings_(sheet, updated)
   var revenue = computeRevenue_(updated, expenses)
-  writeRevenue_(sheet, revenue)
+  writeRevenue_(sheet, period, updated, expenses)
   redrawCalendar_(sheet, period, updated)
   return { bookings: updated, expenses: expenses, revenue: revenue }
 }
@@ -138,7 +141,7 @@ function deleteBooking_(sheetName, id) {
   var expenses = readExpenses_(sheet)
   writeBookings_(sheet, bookings)
   var revenue = computeRevenue_(bookings, expenses)
-  writeRevenue_(sheet, revenue)
+  writeRevenue_(sheet, period, bookings, expenses)
   redrawCalendar_(sheet, period, bookings)
   return { bookings: bookings, expenses: expenses, revenue: revenue }
 }
@@ -163,12 +166,13 @@ function saveExpense_(sheetName, input) {
   })
   writeExpenses_(sheet, updated)
   var revenue = computeRevenue_(bookings, updated)
-  writeRevenue_(sheet, revenue)
+  writeRevenue_(sheet, period, bookings, updated)
   return { bookings: bookings, expenses: updated, revenue: revenue }
 }
 
 function deleteExpense_(sheetName, id) {
   var sheet = openPeriod_(sheetName)
+  var period = parsePeriodName_(sheetName)
   var bookings = readBookings_(sheet)
   var current = readExpenses_(sheet)
   var expenses = current.filter(function (expense) {
@@ -177,8 +181,33 @@ function deleteExpense_(sheetName, id) {
   if (expenses.length === current.length) throw new Error('Không tìm thấy chi phí')
   writeExpenses_(sheet, expenses)
   var revenue = computeRevenue_(bookings, expenses)
-  writeRevenue_(sheet, revenue)
+  writeRevenue_(sheet, period, bookings, expenses)
   return { bookings: bookings, expenses: expenses, revenue: revenue }
+}
+
+function settleSlice_(sheetName, start, end, settled) {
+  var sheet = openPeriod_(sheetName)
+  var period = parsePeriodName_(sheetName)
+  var bookings = readBookings_(sheet)
+  var expenses = readExpenses_(sheet)
+  var slices = monthSlices_(period.start, period.end)
+  var index = -1
+  for (var cursor = 0; cursor < slices.length; cursor += 1) {
+    if (slices[cursor].start === String(start) && slices[cursor].end === String(end)) index = cursor
+  }
+  if (index < 0) throw new Error('Không tìm thấy tháng')
+  var next = bookings.map(function (booking) {
+    if (checkoutSliceIndex_(booking.checkOut, slices, period.end) !== index) return booking
+    var copy = {}
+    for (var key in booking) copy[key] = booking[key]
+    copy.settled = settled === true
+    return copy
+  })
+  next.sort(compareBookings_)
+  writeBookings_(sheet, next)
+  var revenue = computeRevenue_(next, expenses)
+  writeRevenue_(sheet, period, next, expenses)
+  return { bookings: next, expenses: expenses, revenue: revenue }
 }
 
 function openPeriod_(sheetName) {
@@ -186,8 +215,17 @@ function openPeriod_(sheetName) {
   if (!period) throw new Error('Tên sheet không đúng định dạng 11.11.2026-10.01.2027')
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(period.sheetName)
   if (!sheet) throw new Error('Không tìm thấy kỳ')
+  ensureLayout_(sheet)
   ensureHeaders_(sheet)
   return sheet
+}
+
+function ensureLayout_(sheet) {
+  if (String(sheet.getRange(1, 14).getValue()) === 'Khóa') return
+  if (String(sheet.getRange(1, 15).getValue()) === 'id') {
+    sheet.insertColumnsBefore(14, 2)
+    writeDetailHeader_(sheet)
+  }
 }
 
 function ensureHeaders_(sheet) {
@@ -198,12 +236,14 @@ function ensureHeaders_(sheet) {
   if (!sheet.getRange(1, EXPENSE_COL).getValue()) {
     sheet
       .getRange(1, EXPENSE_COL, 1, 5)
-      .setValues([['id', 'Chi phí', 'Chi tiết', 'Ngày chi', 'Số tiền']])
+      .setValues([['id', 'Chi phí', 'Ghi chú', 'Ngày chi', 'Số tiền']])
       .setFontWeight('bold')
       .setFontColor('#ffffff')
       .setBackground('#244D74')
     sheet.getRange(1, EXPENSE_COL + 3, sheet.getMaxRows(), 1).setNumberFormat('@')
   }
+  var noteHeader = sheet.getRange(1, EXPENSE_COL + 2)
+  if (String(noteHeader.getValue()) === 'Chi tiết') noteHeader.setValue('Ghi chú')
 }
 
 function detailIsLegacy_(sheet) {
@@ -216,10 +256,11 @@ function isPaidLabel_(value) {
 
 function readBookings_(sheet) {
   var legacy = detailIsLegacy_(sheet)
-  return readRows_(sheet, DETAIL_COL, legacy ? 12 : 13).map(function (row) {
+  var width = legacy ? 12 : hasLockColumns_(sheet) ? DETAIL_WIDTH : 13
+  return readRows_(sheet, DETAIL_COL, width).map(function (row) {
     return {
       id: String(row[0]),
-      source: String(row[1] || ''),
+      source: canonicalSource_(String(row[1] || '')),
       guestName: String(row[2] || ''),
       checkIn: asIso_(row[3]),
       checkOut: asIso_(row[4]),
@@ -231,8 +272,18 @@ function readBookings_(sheet) {
       net: Number(row[10]) || 0,
       paid: legacy ? false : isPaidLabel_(row[11]),
       note: String((legacy ? row[11] : row[12]) || ''),
+      locked: !legacy && width === DETAIL_WIDTH && isPaidLabel_(row[13]),
+      settled: !legacy && width === DETAIL_WIDTH && isPaidLabel_(row[14]),
     }
   })
+}
+
+function hasLockColumns_(sheet) {
+  return String(sheet.getRange(1, 14).getValue()) === 'Khóa'
+}
+
+function canonicalSource_(source) {
+  return source === 'BDC' ? 'Booking.com' : source
 }
 
 function readExpenses_(sheet) {
@@ -260,8 +311,8 @@ function readRows_(sheet, column, width) {
 
 function writeDetailHeader_(sheet) {
   sheet
-    .getRange(1, DETAIL_COL, 1, 13)
-    .setValues([['id', 'Nguồn', 'Tên khách', 'Check-in', 'Check-out', 'Phòng', 'Số đêm', 'Giá bán', 'Tổng cộng', 'Chi phí', 'Giá thu', 'Thanh toán', 'Ghi chú']])
+    .getRange(1, DETAIL_COL, 1, DETAIL_WIDTH)
+    .setValues([['id', 'Nguồn', 'Tên khách', 'Check-in', 'Check-out', 'Phòng', 'Số đêm', 'Giá bán', 'Tổng cộng', 'Chi phí', 'Giá thu', 'Thanh toán', 'Ghi chú', 'Khóa', 'Đã chốt?']])
     .setFontWeight('bold')
     .setFontColor('#ffffff')
     .setBackground('#244D74')
@@ -270,13 +321,13 @@ function writeDetailHeader_(sheet) {
 
 function writeBookings_(sheet, bookings) {
   writeDetailHeader_(sheet)
-  clearBody_(sheet, DETAIL_COL, 13)
+  clearBody_(sheet, DETAIL_COL, DETAIL_WIDTH)
   if (!bookings.length) return
-  sheet.getRange(2, DETAIL_COL, bookings.length, 13).setValues(
+  sheet.getRange(2, DETAIL_COL, bookings.length, DETAIL_WIDTH).setValues(
     bookings.map(function (booking) {
       return [
         booking.id,
-        booking.source,
+        canonicalSource_(booking.source),
         safeText_(booking.guestName),
         booking.checkIn,
         booking.checkOut,
@@ -288,6 +339,8 @@ function writeBookings_(sheet, bookings) {
         booking.net,
         booking.paid ? 'Yes' : 'No',
         safeText_(booking.note),
+        booking.locked ? 'Yes' : 'No',
+        booking.settled ? 'Yes' : 'No',
       ]
     }),
   )
@@ -308,24 +361,31 @@ function clearBody_(sheet, column, width) {
   sheet.getRange(2, column, Math.max(last - 1, 1), width).clearContent()
 }
 
-function writeRevenue_(sheet, revenue) {
-  sheet
-    .getRange(1, REVENUE_COL, 1, 6)
-    .setValues([['Doanh thu', 'Doanh thu ước tính', 'Chi phí', 'Lợi nhuận', 'Quân Duy (50%)', 'Thùy (50%)']])
-    .setFontWeight('bold')
-    .setFontColor('#ffffff')
-    .setBackground('#244D74')
-  sheet
-    .getRange(2, REVENUE_COL, 1, 6)
-    .setValues([[revenue.doanhThu, revenue.doanhThuUocTinh, revenue.chiPhi, revenue.loiNhuan, revenue.quanDuy, revenue.thuy]])
-    .setNumberFormat('#,##0')
+function writeRevenue_(sheet, period, bookings, expenses) {
+  var lines = revenueLines_(period.start, period.end, bookings, expenses)
+  var width = 5
+  var rows = Math.max(lines.length + 1, 8)
+  sheet.getRange(1, REVENUE_COL, rows, 6).breakApart().clearContent().clearFormat()
+  var values = [['Tháng', 'Doanh thu ước tính', 'Doanh thu', 'Chi phí', 'Lợi nhuận']]
+  lines.forEach(function (line) {
+    values.push([line.label, line.doanhThuUocTinh, line.doanhThu, line.chiPhi, line.loiNhuan])
+  })
+  var body = sheet.getRange(1, REVENUE_COL, values.length, width)
+  body.setValues(values)
+  body.offset(0, 1, values.length, 4).setNumberFormat('#,##0')
+  sheet.getRange(1, REVENUE_COL, 1, width).setFontWeight('bold').setFontColor('#ffffff').setBackground('#244D74')
+  lines.forEach(function (line, index) {
+    if (line.kind === 'total') {
+      sheet.getRange(index + 2, REVENUE_COL, 1, width).setFontWeight('bold').setBackground('#F4F4F5')
+    }
+  })
 }
 
 function redrawCalendar_(sheet, period, bookings) {
-  var weeks = weeksCovering_(period.start, period.end)
-  var width = 9
-  var usedRows = Math.max(weeks.length * 6, 1)
-  var area = sheet.getRange(1, CALENDAR_COL, usedRows + 12, width)
+  var halves = periodHalves_(period.start, period.end)
+  var width = CALENDAR_WIDTH
+  var usedRows = 180
+  var area = sheet.getRange(1, CALENDAR_COL, usedRows, width)
   area.breakApart()
   area.clear()
 
@@ -344,24 +404,30 @@ function redrawCalendar_(sheet, period, bookings) {
   var roomBands = []
   var titles = []
 
-  groupWeeks_(weeks).forEach(function (block) {
-    var firstDay = block[0][0].iso
-    var lastWeek = block[block.length - 1]
-    var lastDay = lastWeek[lastWeek.length - 1].iso
-    values.push(filled(shortDay_(firstDay) + ' – ' + shortDay_(lastDay)))
+  var dayHeaders = ['Room', 'Type']
+  WEEKDAYS.forEach(function (label) {
+    dayHeaders.push(label)
+  })
+  WEEKDAYS.forEach(function (label) {
+    dayHeaders.push(label)
+  })
+
+  halves.forEach(function (half) {
+    var rows = fortnightsCovering_(half.start, half.end)
+    values.push(filled(shortDay_(half.start) + ' – ' + shortDay_(half.end)))
     backgrounds.push(filled('#244D74'))
     fontColors.push(filled('#ffffff'))
     fontWeights.push(filled('bold'))
     aligns.push(filled('center'))
     titles.push(values.length)
 
-    values.push(['Room', 'Type'].concat(WEEKDAYS))
+    values.push(dayHeaders)
     backgrounds.push(filled('#244D74'))
     fontColors.push(filled('#ffffff'))
     fontWeights.push(filled('bold'))
     aligns.push(filled('center'))
 
-    block.forEach(function (week) {
+    rows.forEach(function (week) {
     var dates = ['', '']
     var dateBg = ['#F5F5F5', '#F5F5F5']
     var dateInk = ['#000000', '#000000']
@@ -400,13 +466,13 @@ function redrawCalendar_(sheet, period, bookings) {
         if (cell.kind === 'outside') {
           for (var offset = 0; offset < span; offset += 1) rowBg[column + offset] = '#F5F5F5'
         } else if (cell.kind === 'stay') {
-          var text = cell.booking.guestName
-          if (cell.booking.note) text += '\n' + cell.booking.note
+          var text = cell.booking.locked ? 'Khóa' : (sourceMark_(cell.booking.source) ? sourceMark_(cell.booking.source) + '  ' : '') + cell.booking.guestName
+          if (!cell.booking.locked && cell.booking.note) text += '\n' + cell.booking.note
           rowValues[column] = safeText_(text)
           rowAlign[column] = 'center'
           for (var stayOffset = 0; stayOffset < span; stayOffset += 1) {
-            rowBg[column + stayOffset] = meta.cell
-            rowInk[column + stayOffset] = meta.ink
+            rowBg[column + stayOffset] = cell.booking.locked ? '#171717' : meta.cell
+            rowInk[column + stayOffset] = cell.booking.locked ? '#ffffff' : meta.ink
           }
           stays.push({ row: values.length + 1, column: CALENDAR_COL + column, span: span })
         }
@@ -447,32 +513,51 @@ function redrawCalendar_(sheet, period, bookings) {
     target.setWrap(true).setHorizontalAlignment('center').setVerticalAlignment('middle')
   })
   roomBands.forEach(function (row) {
-    sheet.getRange(row, CALENDAR_COL + 2, 3, 7).setBorder(true, true, true, true, true, true, '#d6d3d1', SpreadsheetApp.BorderStyle.SOLID)
+    sheet.getRange(row, CALENDAR_COL + 2, 3, 14).setBorder(true, true, true, true, true, true, '#d6d3d1', SpreadsheetApp.BorderStyle.SOLID)
     sheet.setRowHeights(row, 3, 28)
   })
 
   sheet.setColumnWidth(CALENDAR_COL, 70)
   sheet.setColumnWidth(CALENDAR_COL + 1, 80)
-  for (var index = 2; index < width; index += 1) sheet.setColumnWidth(CALENDAR_COL + index, 120)
+  for (var index = 2; index < width; index += 1) sheet.setColumnWidth(CALENDAR_COL + index, 72)
 }
 
 function normalizeBooking_(input, period, existing, id) {
+  var locked = input.locked === true
   var guestName = String(input.guestName || '').trim()
-  var source = String(input.source || '')
+  var source = canonicalSource_(String(input.source || ''))
   var room = String(input.room || '')
   var checkIn = String(input.checkIn || '')
   var checkOut = String(input.checkOut || '')
-  if (!guestName) throw new Error('Nhập tên khách')
-  if (!SOURCE_OK[source] && source !== '') throw new Error('Nguồn không hợp lệ')
-  if (!Object.prototype.hasOwnProperty.call(SOURCE_OK, source)) throw new Error('Nguồn không hợp lệ')
   if (!ROOMS[room]) throw new Error('Chọn phòng')
   if (!isWithin_(checkIn, period) || !isCheckoutInPeriod_(checkOut, period)) throw new Error('Ngày nhận và trả phòng phải nằm trong kỳ đang mở')
   if (checkOut <= checkIn) throw new Error('Ngày trả phòng phải sau ngày nhận')
+  var clash = findOverlap_(existing, room, checkIn, checkOut, input.id ? String(input.id) : '')
+  if (clash) throw new Error('Phòng ' + room + ' đã có ' + (clash.locked ? 'khóa' : clash.guestName) + ' trong các đêm này')
+  var nights = nightsBetween_(checkIn, checkOut)
+  if (locked) {
+    return {
+      id: id,
+      source: '',
+      guestName: '',
+      checkIn: checkIn,
+      checkOut: checkOut,
+      room: room,
+      nights: nights,
+      pricePerNight: 0,
+      total: 0,
+      cost: 0,
+      net: 0,
+      paid: true,
+      note: String(input.note || '').trim(),
+      locked: true,
+      settled: input.settled === true,
+    }
+  }
+  if (!guestName) throw new Error('Nhập tên khách')
+  if (!SOURCE_OK[source]) throw new Error('Chọn nguồn')
   var total = asInt_(input.total, 'Tổng giá phải là số nguyên không âm', 0)
   var cost = asInt_(input.cost, 'Chi phí phải là số nguyên không âm', 0)
-  var clash = findOverlap_(existing, room, checkIn, checkOut, input.id ? String(input.id) : '')
-  if (clash) throw new Error('Phòng ' + room + ' đã có ' + clash.guestName + ' trong các đêm này')
-  var nights = nightsBetween_(checkIn, checkOut)
   return {
     id: id,
     source: source,
@@ -487,6 +572,8 @@ function normalizeBooking_(input, period, existing, id) {
     net: total - cost,
     paid: isPaidLabel_(input.paid),
     note: String(input.note || '').trim(),
+    locked: false,
+    settled: input.settled === true,
   }
 }
 
@@ -524,16 +611,94 @@ function computeRevenue_(bookings, expenses) {
   expenses.forEach(function (expense) {
     chiPhi += Number(expense.amount) || 0
   })
-  var loiNhuan = doanhThu - chiPhi
-  var quanDuy = Math.round(loiNhuan / 2)
   return {
     doanhThu: doanhThu,
     doanhThuUocTinh: doanhThuUocTinh,
     chiPhi: chiPhi,
-    loiNhuan: loiNhuan,
-    quanDuy: quanDuy,
-    thuy: loiNhuan - quanDuy,
+    loiNhuan: doanhThu - chiPhi,
   }
+}
+
+function monthSlices_(start, end) {
+  var slices = []
+  var cursor = start
+  while (cursor <= end) {
+    var sliceEnd = addDaysIso_(addMonthsIso_(cursor, 1), -1)
+    var capped = sliceEnd > end ? end : sliceEnd
+    slices.push({ start: cursor, end: capped })
+    if (capped >= end) break
+    cursor = addDaysIso_(capped, 1)
+  }
+  return slices
+}
+
+function periodHalves_(start, end) {
+  var slices = monthSlices_(start, end)
+  if (slices.length <= 1) return [{ start: start, end: end }]
+  var mid = Math.ceil(slices.length / 2)
+  var first = slices.slice(0, mid)
+  var second = slices.slice(mid)
+  return [
+    { start: first[0].start, end: first[first.length - 1].end },
+    { start: second[0].start, end: second[second.length - 1].end },
+  ]
+}
+
+function checkoutSliceIndex_(checkOut, slices, periodEnd) {
+  var day = checkOut > periodEnd ? periodEnd : checkOut
+  for (var index = 0; index < slices.length; index += 1) {
+    if (day >= slices[index].start && day <= slices[index].end) return index
+  }
+  return Math.max(slices.length - 1, 0)
+}
+
+function revenueLines_(start, end, bookings, expenses) {
+  var slices = monthSlices_(start, end)
+  var months = slices.map(function (slice, index) {
+    var stays = bookings.filter(function (booking) {
+      return checkoutSliceIndex_(booking.checkOut, slices, end) === index
+    })
+    var costs = expenses.filter(function (expense) {
+      return expense.date >= slice.start && expense.date <= slice.end
+    })
+    var money = computeRevenue_(stays, costs)
+    money.kind = 'month'
+    money.label = shortDay_(slice.start) + ' – ' + shortDay_(slice.end)
+    return money
+  })
+  var lines = []
+  months.forEach(function (month, index) {
+    lines.push(month)
+    if (index % 2 === 1) {
+      var pair = months.slice(index - 1, index + 1)
+      var doanhThu = pair[0].doanhThu + pair[1].doanhThu
+      var doanhThuUocTinh = pair[0].doanhThuUocTinh + pair[1].doanhThuUocTinh
+      var chiPhi = pair[0].chiPhi + pair[1].chiPhi
+      lines.push({
+        kind: 'total',
+        label: 'Tổng ' + pair[0].label.split(' – ')[0] + ' – ' + pair[1].label.split(' – ')[1],
+        doanhThu: doanhThu,
+        doanhThuUocTinh: doanhThuUocTinh,
+        chiPhi: chiPhi,
+        loiNhuan: doanhThu - chiPhi,
+      })
+    }
+  })
+  return lines
+}
+
+function addMonthsIso_(iso, months) {
+  var date = parseIso_(iso)
+  var day = date.getDate()
+  date.setMonth(date.getMonth() + months)
+  if (date.getDate() !== day) date.setDate(0)
+  return isoOf_(date)
+}
+
+function addDaysIso_(iso, days) {
+  var date = parseIso_(iso)
+  date.setDate(date.getDate() + days)
+  return isoOf_(date)
 }
 
 function groupWeeks_(weeks) {
@@ -549,6 +714,32 @@ function groupWeeks_(weeks) {
 
 function shortDay_(iso) {
   return iso.slice(8, 10) + '/' + iso.slice(5, 7)
+}
+
+function sourceMark_(source) {
+  if (source === 'Booking.com' || source === 'BDC') return 'B'
+  if (source === 'Agoda') return 'A'
+  if (source === 'Air bnb') return 'N'
+  if (source === 'Khách lẻ') return 'K'
+  return ''
+}
+
+function fortnightsCovering_(start, end) {
+  var cursor = startOfMonday_(start)
+  var last = isoOf_(startOfMonday_(end))
+  var rows = []
+  while (isoOf_(cursor) <= last) {
+    var days = []
+    for (var index = 0; index < 14; index += 1) {
+      var day = new Date(cursor.getTime())
+      day.setDate(cursor.getDate() + index)
+      var iso = isoOf_(day)
+      days.push({ iso: iso, inPeriod: iso >= start && iso <= end })
+    }
+    rows.push(days)
+    cursor.setDate(cursor.getDate() + 14)
+  }
+  return rows
 }
 
 function weeksCovering_(start, end) {
